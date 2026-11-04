@@ -1,6 +1,7 @@
 package gzip
 
 import (
+	"encoding/binary"
 	"errors"
 	"io"
 )
@@ -295,7 +296,11 @@ func (d *decoder) dynamic() error {
 	clMask := uint64(1)<<clBits - 1
 
 	lens := d.lens[:nlen+ndist]
-	for i := 0; i < len(lens); {
+	i, err := d.lensFast(lens, &clTable, clMask)
+	if err != nil {
+		return err
+	}
+	for i < len(lens) {
 		var e uint32
 		for {
 			e = clTable[d.hold&clMask]
@@ -365,6 +370,66 @@ func (d *decoder) dynamic() error {
 		}
 		lb, db = fallbackLenBits, fallbackDistBits
 	}
+}
+
+// lensFast decodes code lengths for dynamic while 8 bytes of input remain.
+// One 8-byte load refills the bit buffer for several lengths, where the
+// loop in dynamic pulls one byte at a time. It returns the number of lengths
+// decoded; dynamic decodes the rest.
+func (d *decoder) lensFast(lens []uint16, cl *[128]uint32, mask uint64) (int, error) {
+	hold, bits, ip := d.hold, d.bits, d.ip
+	i := 0
+	for i < len(lens) && len(d.in)-ip >= 8 {
+		// a length code and its extra bits take at most 14 bits; the bits
+		// above the count hold the same input that the load ORs in
+		if bits < 14 {
+			hold |= binary.LittleEndian.Uint64(d.in[ip:]) << bits
+			n := (63 - bits) >> 3
+			ip += int(n)
+			bits += n << 3
+		}
+		e := cl[hold&mask]
+		n := entryBits(e)
+		hold >>= n
+		bits -= n
+		sym := entryVal(e)
+		if sym < 16 {
+			lens[i] = uint16(sym)
+			i++
+			continue
+		}
+		var rep int
+		var val uint16
+		switch sym {
+		case 16:
+			if i == 0 {
+				return 0, ErrCorrupt
+			}
+			val, rep = lens[i-1], 3+int(hold&3)
+			hold >>= 2
+			bits -= 2
+		case 17:
+			rep = 3 + int(hold&7)
+			hold >>= 3
+			bits -= 3
+		default:
+			rep = 11 + int(hold&127)
+			hold >>= 7
+			bits -= 7
+		}
+		if i+rep > len(lens) {
+			return 0, ErrCorrupt
+		}
+		for ; rep > 0; rep-- {
+			lens[i] = val
+			i++
+		}
+	}
+	// give back the whole bytes in the buffer, as fast does
+	ip -= int(bits >> 3)
+	bits &= 7
+	d.hold, d.bits, d.ip = hold&(1<<bits-1), bits, ip
+	return i, nil
 }
 
 // slowEntry decodes one table entry with byte-at-a-time refills. It is used
