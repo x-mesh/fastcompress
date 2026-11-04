@@ -48,10 +48,10 @@ type fusedCtx struct {
 //go:noescape
 func fusedSeqsARM64(ctx *fusedCtx)
 
-// runFused decodes and executes the sequences of a compressed block in one
-// pass, as parseSeqs and run do in two. The assembly stops near the start of
-// the bitstream; the Go loops decode and execute the rest.
-func (d *zdec) runFused(out []byte, it *zitem) ([]byte, error) {
+// runFused decodes the sequences of a compressed block and executes them
+// with x in one pass, as parseSeqs and run do in two. The assembly stops near
+// the start of the bitstream; the Go loops decode and execute the rest.
+func (d *zdec) runFused(x *zexec, out []byte, it *zitem) ([]byte, error) {
 	src := it.seqSrc
 	nseq, m, err := d.seq.readHeader(src, 0)
 	if err != nil {
@@ -61,20 +61,19 @@ func (d *zdec) runFused(out []byte, it *zitem) ([]byte, error) {
 		if m != len(src) {
 			return out, ErrCorrupt
 		}
-		return d.x.run(out, it)
+		return x.run(out, it)
 	}
 	// every sequence copies a match of at least 3 bytes
 	if m >= len(src) || nseq > zstdBlockMax/3 {
 		return out, ErrCorrupt
 	}
-	x := &d.x
 	out, room := x.room(out)
 	start := len(out)
 	var s seqState
 	if err := d.seqInit(&s, src, m, len(src)); err != nil {
 		return out, err
 	}
-	out, err = d.fusedSeqs(out, &s, nseq, it.lits, start+room)
+	out, err = d.fusedSeqs(x, out, &s, nseq, it.lits, start+room)
 	if err != nil {
 		return out[:start], err
 	}
@@ -83,8 +82,8 @@ func (d *zdec) runFused(out []byte, it *zitem) ([]byte, error) {
 }
 
 // fusedSeqs decodes nseq sequences from s and executes them with lits onto
-// out, up to blockEnd.
-func (d *zdec) fusedSeqs(out []byte, s *seqState, nseq int, lits []byte, blockEnd int) ([]byte, error) {
+// out, up to blockEnd, in the frame and window of x.
+func (d *zdec) fusedSeqs(x *zexec, out []byte, s *seqState, nseq int, lits []byte, blockEnd int) ([]byte, error) {
 	ctx := fusedCtx{
 		s: seqCtx{
 			src: unsafe.Pointer(unsafe.SliceData(s.br.src)), p: s.br.p, plim: s.br.start + 24,
@@ -99,8 +98,8 @@ func (d *zdec) fusedSeqs(out []byte, s *seqState, nseq int, lits []byte, blockEn
 			end:     blockEnd,
 			lits:    unsafe.Pointer(unsafe.SliceData(lits)),
 			litEnd:  len(lits),
-			fs:      d.x.frameStart,
-			window:  d.x.window,
+			fs:      x.frameStart,
+			window:  x.window,
 			masks:   unsafe.Pointer(&shufMasks),
 			strides: unsafe.Pointer(&stride16),
 		},
@@ -114,7 +113,7 @@ func (d *zdec) fusedSeqs(out []byte, s *seqState, nseq int, lits []byte, blockEn
 	s.rep0, s.rep1, s.rep2 = uint(ctx.s.rep[0]), uint(ctx.s.rep[1]), uint(ctx.s.rep[2])
 	seqs := d.seqs[:nseq-ctx.s.i]
 	d.seqDecode(s, seqs)
-	out, err := execBlock(out[:ctx.x.o], seqs, lits[ctx.x.lit:], blockEnd, d.x.frameStart, d.x.window)
+	out, err := execBlock(out[:ctx.x.o], seqs, lits[ctx.x.lit:], blockEnd, x.frameStart, x.window)
 	if err != nil {
 		return out, err
 	}

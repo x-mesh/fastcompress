@@ -474,7 +474,7 @@ func (d *zdec) blocks(out, src []byte, h *frameHeader) ([]byte, int, error) {
 		var err error
 		it := d.parseLits(src, i, &zb)
 		if useFusedAsm && it.err == nil && it.typ == 2 {
-			out, err = d.runFused(out, &it)
+			out, err = d.runFused(&d.x, out, &it)
 		} else {
 			d.parseSeqs(&it)
 			if it.err != nil {
