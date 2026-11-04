@@ -523,7 +523,7 @@ func encodeSeqBits(out []byte, seqs []encSeq, codes []uint32, llT, mlT, ofT *fse
 	o += int(nb >> 3)
 	acc >>= nb &^ 7
 	nb &= 7
-	if n >= 2 && useSeqAsm {
+	if n >= 2 && useEncAsm {
 		ctx := seqEncCtx{
 			out: p, o: o, seqs: unsafe.Pointer(unsafe.SliceData(seqs)),
 			codes: unsafe.Pointer(unsafe.SliceData(codes)), i: n - 2,
