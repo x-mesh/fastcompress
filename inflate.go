@@ -6,8 +6,8 @@ import (
 )
 
 var (
-	// ErrCorrupt reports DEFLATE data that does not decode.
-	ErrCorrupt = errors.New("fastgzip: corrupt deflate data")
+	// ErrCorrupt reports DEFLATE or zstd data that does not decode.
+	ErrCorrupt = errors.New("fastgzip: corrupt data")
 	errEOF     = io.ErrUnexpectedEOF
 	errNoRoom  = errors.New("fastgzip: table too small")
 )

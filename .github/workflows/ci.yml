@@ -26,7 +26,16 @@ jobs:
       - run: go test -run '^$' -fuzz '^FuzzReader$' -fuzztime 20s -fuzzminimizetime 1s .
       - run: go test -run '^$' -fuzz '^FuzzDeflate$' -fuzztime 20s -fuzzminimizetime 1s .
       - run: go test -run '^$' -fuzz '^FuzzWriter$' -fuzztime 20s -fuzzminimizetime 1s .
-      - name: bench module builds
+      - run: go test -tags purego ./...
+      - run: go test -run '^$' -fuzz '^FuzzUnzstd$' -fuzztime 20s -fuzzminimizetime 1s .
+      - run: go test -run '^$' -fuzz '^FuzzZstdReader$' -fuzztime 20s -fuzzminimizetime 1s .
+      - run: go test -run '^$' -fuzz '^FuzzZstdRoundTrip$' -fuzztime 20s -fuzzminimizetime 1s .
+      - run: go test -run '^$' -fuzz '^FuzzZstdWriter$' -fuzztime 20s -fuzzminimizetime 1s .
+      - name: bench module builds and cross-checks zstd with klauspost/compress
         if: matrix.go == 'stable'
         working-directory: bench
-        run: go vet ./...
+        run: |
+          go vet ./...
+          go test ./...
+          go test -run '^$' -fuzz '^FuzzUnzstdKlauspostRaw$' -fuzztime 20s -fuzzminimizetime 1s .
+          go test -run '^$' -fuzz '^FuzzKlauspostDecodesZstd$' -fuzztime 20s -fuzzminimizetime 1s .
