@@ -21,6 +21,17 @@ func execSeqsARM64(ctx *execCtx)
 
 func execSeqs(ctx *execCtx) { execSeqsARM64(ctx) }
 
+// The compiled Go loop of encodeSeqBits reloads a table pointer from the
+// stack in each sequence and makes each mask of state bits in three
+// instructions. On one goroutine of an M1 Pro, Encode took 2-4% less time
+// with the assembly.
+var useEncAsm = true
+
+//go:noescape
+func encSeqsARM64(ctx *seqEncCtx)
+
+func encodeSeqsAsm(ctx *seqEncCtx) { encSeqsARM64(ctx) }
+
 // Decoding a sequence waits on a chain of loads and shifts, and copying it
 // waits on memory. In one loop the two overlap: on one goroutine of an M1
 // Pro, a 100 MB log at level 1 decoded in 15% less time than with two loops.

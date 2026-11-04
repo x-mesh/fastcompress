@@ -73,3 +73,19 @@ func execBlockAsm(out []byte, seqs []seqVal, lits []byte, blockEnd, frameStart, 
 	execSeqs(&ctx)
 	return ctx.o, ctx.lit, ctx.err == 0
 }
+
+// seqEncCtx carries encodeSeqBits' state into the assembly encoder. Its
+// layout matches the ES_ offsets in zstd_amd64.s and zstd_arm64.s.
+type seqEncCtx struct {
+	out    unsafe.Pointer
+	o      int
+	seqs   unsafe.Pointer
+	codes  unsafe.Pointer
+	i      int               // the sequence to encode next, counting down to 0
+	tabs   [3]unsafe.Pointer // literal length, match length, offset *fseEnc
+	states [3]uint64
+	acc    uint64
+	nb     uint64
+	llInfo unsafe.Pointer
+	mlInfo unsafe.Pointer
+}

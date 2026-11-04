@@ -279,3 +279,86 @@ func TestDecodeSeqsMatchesGo(t *testing.T) {
 		}
 	}
 }
+
+func TestSeqEncCtxLayout(t *testing.T) {
+	var c seqEncCtx
+	var f fseEnc
+	for _, x := range []struct {
+		name     string
+		got, asm uintptr
+	}{
+		{"out", unsafe.Offsetof(c.out), 0},
+		{"o", unsafe.Offsetof(c.o), 8},
+		{"seqs", unsafe.Offsetof(c.seqs), 16},
+		{"codes", unsafe.Offsetof(c.codes), 24},
+		{"i", unsafe.Offsetof(c.i), 32},
+		{"tabs", unsafe.Offsetof(c.tabs), 40},
+		{"states", unsafe.Offsetof(c.states), 64},
+		{"acc", unsafe.Offsetof(c.acc), 88},
+		{"nb", unsafe.Offsetof(c.nb), 96},
+		{"llInfo", unsafe.Offsetof(c.llInfo), 104},
+		{"mlInfo", unsafe.Offsetof(c.mlInfo), 112},
+		{"fseEnc.state", unsafe.Offsetof(f.state), 8},
+		{"fseEnc.tt", unsafe.Offsetof(f.tt), 1032},
+		{"encSeq", unsafe.Sizeof(encSeq{}), 12},
+	} {
+		if x.got != x.asm {
+			t.Errorf("%s at %d, assembly expects %d", x.name, x.got, x.asm)
+		}
+	}
+}
+
+// The assembly sequence encoder writes the same bits as the Go loop.
+func TestEncAsmMatchesGo(t *testing.T) {
+	if !useEncAsm {
+		t.Skip("no assembly on this CPU")
+	}
+	r := rand.New(rand.NewPCG(11, 12))
+	data := sampleData(r, 3<<20)
+	for _, level := range []int{1, 3} {
+		withAsm := Encode(nil, data, level)
+		useEncAsm = false
+		withGo := Encode(nil, data, level)
+		useEncAsm = true
+		if !bytes.Equal(withAsm, withGo) {
+			t.Errorf("level %d: assembly and Go encodings differ", level)
+		}
+	}
+}
+
+// The assembly encoder must write the bits of the Go loop also for lengths
+// up to 128 KB and offset codes up to 30, where the offset bits need a flush
+// of their own, and for single-code, predefined and new tables. Only blocks
+// of 2049 sequences and more get tables of 512 states.
+func TestEncodeSeqsMatchesGo(t *testing.T) {
+	if !useEncAsm {
+		t.Skip("no assembly on this CPU")
+	}
+	r := rand.New(rand.NewPCG(21, 22))
+	var ea, eg zenc
+	for k := range 2000 {
+		n := 2 + r.IntN(1000)
+		if k%4 == 0 {
+			n = 2049 + r.IntN(4000)
+		}
+		seqs := make([]encSeq, n)
+		lb, mb, ob := r.IntN(18), r.IntN(18), r.IntN(31)
+		for i := range seqs {
+			seqs[i] = encSeq{
+				ll:  uint32(r.IntN(1 << lb)),
+				ml:  3 + uint32(r.IntN(1<<mb)),
+				off: 1 + uint32(r.IntN(1<<ob)),
+			}
+		}
+		ea.reset(1)
+		eg.reset(1)
+		withAsm := ea.sequences(nil, slices.Clone(seqs))
+		useEncAsm = false
+		withGo := eg.sequences(nil, slices.Clone(seqs))
+		useEncAsm = true
+		if !bytes.Equal(withAsm, withGo) {
+			t.Fatalf("case %d: %d sequences, %d, %d and %d bits: assembly and Go encodings differ",
+				k, len(seqs), lb, mb, ob)
+		}
+	}
+}
