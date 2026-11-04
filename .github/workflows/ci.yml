@@ -22,15 +22,15 @@ jobs:
       - run: go vet ./...
       - run: go test -race ./...
       - run: go test -gcflags=all=-d=checkptr ./...
-      - run: go test -run '^$' -fuzz '^FuzzInflate$' -fuzztime 20s -fuzzminimizetime 1s .
-      - run: go test -run '^$' -fuzz '^FuzzReader$' -fuzztime 20s -fuzzminimizetime 1s .
-      - run: go test -run '^$' -fuzz '^FuzzDeflate$' -fuzztime 20s -fuzzminimizetime 1s .
-      - run: go test -run '^$' -fuzz '^FuzzWriter$' -fuzztime 20s -fuzzminimizetime 1s .
+      - run: go test -run '^$' -fuzz '^FuzzInflate$' -fuzztime 20s -fuzzminimizetime 1s ./gzip
+      - run: go test -run '^$' -fuzz '^FuzzReader$' -fuzztime 20s -fuzzminimizetime 1s ./gzip
+      - run: go test -run '^$' -fuzz '^FuzzDeflate$' -fuzztime 20s -fuzzminimizetime 1s ./gzip
+      - run: go test -run '^$' -fuzz '^FuzzWriter$' -fuzztime 20s -fuzzminimizetime 1s ./gzip
       - run: go test -tags purego ./...
-      - run: go test -run '^$' -fuzz '^FuzzUnzstd$' -fuzztime 20s -fuzzminimizetime 1s .
-      - run: go test -run '^$' -fuzz '^FuzzZstdReader$' -fuzztime 20s -fuzzminimizetime 1s .
-      - run: go test -run '^$' -fuzz '^FuzzZstdRoundTrip$' -fuzztime 20s -fuzzminimizetime 1s .
-      - run: go test -run '^$' -fuzz '^FuzzZstdWriter$' -fuzztime 20s -fuzzminimizetime 1s .
+      - run: go test -run '^$' -fuzz '^FuzzDecode$' -fuzztime 20s -fuzzminimizetime 1s ./zstd
+      - run: go test -run '^$' -fuzz '^FuzzReader$' -fuzztime 20s -fuzzminimizetime 1s ./zstd
+      - run: go test -run '^$' -fuzz '^FuzzRoundTrip$' -fuzztime 20s -fuzzminimizetime 1s ./zstd
+      - run: go test -run '^$' -fuzz '^FuzzWriter$' -fuzztime 20s -fuzzminimizetime 1s ./zstd
       - name: bench module builds and cross-checks zstd with klauspost/compress
         if: matrix.go == 'stable'
         working-directory: bench

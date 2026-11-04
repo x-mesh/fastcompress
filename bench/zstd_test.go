@@ -9,7 +9,7 @@ import (
 
 	"github.com/klauspost/compress/zstd"
 
-	"github.com/x-mesh/fastgzip"
+	fzstd "github.com/x-mesh/fastcompress/zstd"
 )
 
 // sample makes data with literal runs, repeats at short and long distances,
@@ -66,7 +66,7 @@ func roundTrip(t *testing.T, data []byte, flags byte) {
 		t.Fatal(err)
 	}
 	comp := enc.EncodeAll(data, nil)
-	got, err := fastgzip.Unzstd(comp)
+	got, err := fzstd.Decode(comp)
 	if err != nil {
 		t.Fatalf("flags %#x, %d bytes: %v", flags, len(data), err)
 	}
@@ -75,7 +75,7 @@ func roundTrip(t *testing.T, data []byte, flags byte) {
 	}
 }
 
-// fastgzip decodes what klauspost/compress encodes, at every level and
+// fastcompress decodes what klauspost/compress encodes, at every level and
 // frame option.
 func TestUnzstdKlauspostFrames(t *testing.T) {
 	r := rand.New(rand.NewPCG(5, 6))
@@ -94,8 +94,8 @@ func FuzzUnzstdKlauspostFrames(f *testing.F) {
 	})
 }
 
-// On any input, fastgzip must not accept what klauspost rejects, and when
-// both accept they must agree. fastgzip may reject more.
+// On any input, fastcompress must not accept what klauspost rejects, and when
+// both accept they must agree. fastcompress may reject more.
 func FuzzUnzstdKlauspostRaw(f *testing.F) {
 	files, _ := filepath.Glob("../testdata/zstd/*.zst")
 	for _, name := range files {
@@ -110,13 +110,13 @@ func FuzzUnzstdKlauspostRaw(f *testing.F) {
 		f.Fatal(err)
 	}
 	f.Fuzz(func(t *testing.T, b []byte) {
-		got, err := fastgzip.Unzstd(b)
+		got, err := fzstd.Decode(b)
 		if err != nil {
 			return
 		}
 		want, kerr := dec.DecodeAll(b, nil)
 		if kerr != nil {
-			t.Fatalf("fastgzip accepted input klauspost rejects: %v", kerr)
+			t.Fatalf("fastcompress accepted input klauspost rejects: %v", kerr)
 		}
 		if !bytes.Equal(got, want) {
 			t.Fatalf("output differs: %d vs %d bytes", len(got), len(want))
@@ -124,13 +124,13 @@ func FuzzUnzstdKlauspostRaw(f *testing.F) {
 	})
 }
 
-// klauspost decodes what fastgzip encodes.
+// klauspost decodes what fastcompress encodes.
 func checkKlauspostDecodes(t *testing.T, data []byte, level int) {
 	dec, err := zstd.NewReader(nil, zstd.WithDecoderConcurrency(1))
 	if err != nil {
 		t.Fatal(err)
 	}
-	comp := fastgzip.Zstd(nil, data, level)
+	comp := fzstd.Encode(nil, data, level)
 	got, err := dec.DecodeAll(comp, nil)
 	if err != nil {
 		t.Fatalf("level %d, %d bytes: klauspost: %v", level, len(data), err)
@@ -164,7 +164,7 @@ func TestKlauspostDecodesZstdWriter(t *testing.T) {
 	data := sample(r, 20<<20)
 	for _, level := range []int{1, 3} {
 		var buf bytes.Buffer
-		w := fastgzip.NewZstdWriter(&buf, level)
+		w := fzstd.NewWriter(&buf, level)
 		for p := data; len(p) > 0; {
 			n := min(len(p), 77777)
 			w.Write(p[:n])
