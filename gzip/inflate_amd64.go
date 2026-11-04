@@ -35,7 +35,8 @@ const (
 
 // fastChunk bounds the output of one inflateFastBMI2 call. The runtime
 // cannot preempt assembly, so a call delays a stop-the-world GC until it
-// returns: 64 KB took at most 0.2 ms on the slowest inputs we measured.
+// returns. At the slowest rate we measured, 2.9 ns per output byte, a 64 KB
+// call takes about 0.2 ms.
 const fastChunk = 64 << 10
 
 // BMI2 shifts take any register as the count; without them the Go loop

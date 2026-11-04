@@ -310,7 +310,7 @@ go run . -compress 3 -zstd -n 9 /path/to/files/*
 - The decoder reads the next symbol before it copies a match.
 - The bit count uses the libdeflate method. The decoder subtracts the full entry and uses only the low 6 bits.
 - Match copies move 16 bytes at a time. The first 32 bytes have no loop test, because most matches in log data are 16 bytes or shorter. A short distance repeats as a pattern.
-- On amd64 with BMI2, an assembly function does the steps of the fast loop. It keeps all its state in registers. In the compiled Go loop, each shift count must go into CX, and some values come from the stack again in each step. With `GOAMD64=v3` alone, the Go loop was 8-11% faster. The runtime cannot preempt assembly, so one call stops after about 64 KB of output. On the slowest inputs that we measured, one call took about 0.2 ms.
+- On amd64 with BMI2, an assembly function does the steps of the fast loop. It keeps all its state in registers. In the compiled Go loop, each shift count must go into CX, and some values come from the stack again in each step. With `GOAMD64=v3` alone, the Go loop was 8-11% faster. The runtime cannot preempt assembly, so one call stops after about 64 KB of output. At the slowest rate that we measured, 2.9 ns for each byte of output, one call takes about 0.2 ms.
 - On arm64, an assembly function computes CRC-32 with `PMULL` carry-less multiplies. It folds eight 128-bit lanes in parallel. This is 45 GB/s, and `hash/crc32` is 8.4 GB/s.
 - Above 1 MB, `Gunzip` computes the CRC-32 on a second goroutine. The decoder gives it the output in steps of 1 MB or more, because each step can wake the goroutine.
 
