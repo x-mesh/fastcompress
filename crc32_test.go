@@ -59,3 +59,23 @@ func BenchmarkCRC(b *testing.B) {
 		}
 	})
 }
+
+func TestCRCCombine(t *testing.T) {
+	r := rand.New(rand.NewPCG(15, 16))
+	buf := make([]byte, 3<<20)
+	for i := range buf {
+		buf[i] = byte(r.Uint32())
+	}
+	for range 200 {
+		i := r.IntN(len(buf))
+		if r.IntN(4) == 0 {
+			i = r.IntN(20)
+		}
+		j := i + r.IntN(len(buf)-i+1)
+		a, b := buf[:i], buf[i:j]
+		got := crcCombine(crc32.ChecksumIEEE(a), crc32.ChecksumIEEE(b), len(b))
+		if want := crc32.ChecksumIEEE(buf[:j]); got != want {
+			t.Fatalf("split %d+%d: got %#x want %#x", len(a), len(b), got, want)
+		}
+	}
+}
