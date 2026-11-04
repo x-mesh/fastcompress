@@ -329,7 +329,8 @@ func TestEncAsmMatchesGo(t *testing.T) {
 // The assembly encoder must write the bits of the Go loop also for lengths
 // up to 128 KB and offset codes up to 30, where the offset bits need a flush
 // of their own, and for single-code, predefined and new tables. Only blocks
-// of 2049 sequences and more get tables of 512 states.
+// of 2049 sequences and more get tables of 512 states. The encoder's windows
+// give offset codes up to 23, so the decoder also reads the sequences back.
 func TestEncodeSeqsMatchesGo(t *testing.T) {
 	if !useEncAsm {
 		t.Skip("no assembly on this CPU")
@@ -359,6 +360,22 @@ func TestEncodeSeqsMatchesGo(t *testing.T) {
 		if !bytes.Equal(withAsm, withGo) {
 			t.Fatalf("case %d: %d sequences, %d, %d and %d bits: assembly and Go encodings differ",
 				k, len(seqs), lb, mb, ob)
+		}
+		var d zdec
+		d.rep = [3]uint{1, 4, 8}
+		nseq, m, err := d.seq.readHeader(withAsm, 0)
+		got := make([]seqVal, len(seqs))
+		if err == nil && nseq == len(seqs) {
+			err = d.decodeSeqs(got, withAsm, m, len(withAsm))
+		}
+		for i, s := range seqs {
+			if err == nil && got[i] != (seqVal{s.ll, s.ml, s.off}) {
+				err = fmt.Errorf("sequence %d is %v, not %v", i, got[i], s)
+			}
+		}
+		if err != nil {
+			t.Fatalf("case %d: %d sequences, %d, %d and %d bits: decoding: %v",
+				k, len(seqs), lb, mb, ob, err)
 		}
 	}
 }

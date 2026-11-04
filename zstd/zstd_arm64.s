@@ -669,11 +669,11 @@ eloop:
 	EXTRA(1, R26, 4)
 
 	// the offset's extra bits are the offset value without its top bit;
-	// flush first if they would not fit
+	// flush first if they would make the count 64 or more
 	MOVBU 2(R14), R2
 	ADD   R2, R9, R3
 	CMP   $64, R3
-	BLS   efits
+	BLO   efits
 	EFLUSH
 
 efits:
