@@ -298,7 +298,7 @@ Decoding, 21 runs:
 | Source | 3 | 40.7 | 34.7 | 27.4 | 28.4 |
 | Source | 19 | 43.2 | 36.7 | 36.0 | 34.1 |
 
-With `GOMAXPROCS=1`, `zstd.Decode` takes 40 to 62 ms on these files. That is between 0% and 13% slower than `DecodeAll`. klauspost/compress also decodes the sequences in arm64 assembly.
+With `GOMAXPROCS=1`, `zstd.Decode` takes 40 to 62 ms on these files. That is between 0% and 13% slower than `DecodeAll`. `zstd.Reader` takes 41 to 64 ms. That is between 1% and 5% slower than the klauspost `Decoder`. klauspost/compress also decodes the sequences in arm64 assembly.
 
 Encoding from memory, 9 runs, with the ratio in parentheses. The "one CPU" column has 15 runs.
 

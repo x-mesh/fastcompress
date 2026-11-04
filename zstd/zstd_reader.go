@@ -50,6 +50,8 @@ type zinput struct {
 	h        frameHeader
 	inFrame  bool
 	newFrame bool
+	// fuse leaves the sequences of compressed blocks to runFused in exec
+	fuse bool
 }
 
 // NewReader reads the first zstd frame header from src. It returns
@@ -99,6 +101,8 @@ func (z *Reader) Reset(src io.Reader) error {
 		z.done = make(chan struct{})
 		go in.produce(lits, d.free, z.done, seqsDone)
 		go d.seqStage(lits, z.ch, d.free, z.done, seqsDone)
+	} else {
+		in.fuse = useFusedAsm
 	}
 	return nil
 }
@@ -290,7 +294,12 @@ func (in *zinput) next(zb *zbuf) zitem {
 	if err := in.need(3 + size + sum); err != nil {
 		return zitem{err: err}
 	}
-	it := in.d.parse(in.buf[:in.ie], in.ip, zb)
+	var it zitem
+	if in.fuse {
+		it = in.d.parseLits(in.buf[:in.ie], in.ip, zb)
+	} else {
+		it = in.d.parse(in.buf[:in.ie], in.ip, zb)
+	}
 	it.frame = fh
 	if it.err != nil {
 		return it
@@ -413,7 +422,12 @@ func (z *Reader) exec(it *zitem) {
 		z.r -= shift
 		x.frameStart = max(x.frameStart-shift, 0)
 	}
-	if z.hist, z.err = x.run(z.hist, it); z.err != nil {
+	if z.in.fuse && it.typ == 2 {
+		z.hist, z.err = z.in.d.runFused(x, z.hist, it)
+	} else {
+		z.hist, z.err = x.run(z.hist, it)
+	}
+	if z.err != nil {
 		return
 	}
 	if it.last {

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"math"
 	"math/rand/v2"
+	"runtime"
 	"slices"
 	"testing"
 	"unsafe"
@@ -74,8 +75,9 @@ func TestExecCtxLayout(t *testing.T) {
 	}
 }
 
-// sameDecode decodes src with the assembly and with the Go loops, on two
-// goroutines and on one. On an error the output does not count.
+// sameDecode decodes src with the assembly and with the Go loops: with
+// Decode on two goroutines and on one, and with a Reader on one. On an error
+// the output does not count.
 func sameDecode(t *testing.T, name string, src []byte) {
 	t.Helper()
 	old := pipeMinSize
@@ -90,6 +92,17 @@ func sameDecode(t *testing.T, name string, src []byte) {
 			t.Fatalf("%s, pipeMinSize %d: assembly %d bytes, %v; Go %d bytes, %v",
 				name, pipe, len(asm), aerr, len(gol), gerr)
 		}
+	}
+	// a Reader decodes frames without a declared size on two goroutines
+	// unless there is one CPU
+	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(1))
+	asm, aerr := readAllZstd(bytes.NewReader(src), 1<<16)
+	restore := decodeAsmOff()
+	gol, gerr := readAllZstd(bytes.NewReader(src), 1<<16)
+	restore()
+	if !errors.Is(aerr, gerr) || aerr == nil && !bytes.Equal(asm, gol) {
+		t.Fatalf("%s, Reader: assembly %d bytes, %v; Go %d bytes, %v",
+			name, len(asm), aerr, len(gol), gerr)
 	}
 }
 

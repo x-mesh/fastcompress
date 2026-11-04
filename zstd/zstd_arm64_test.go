@@ -79,7 +79,7 @@ func TestFusedMatchesGo(t *testing.T) {
 		if err := d.seqInit(&s, src, 0, len(src)); err != nil {
 			t.Fatal(err)
 		}
-		out, gerr := d.fusedSeqs(buf[:hist], &s, n, lits, end)
+		out, gerr := d.fusedSeqs(&d.x, buf[:hist], &s, n, lits, end)
 		got := bytes.Clone(out[hist:])
 		before := bytes.Clone(buf[hist:stop])
 		grep := d.rep

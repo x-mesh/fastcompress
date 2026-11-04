@@ -4,11 +4,12 @@ package zstd
 
 const useFusedAsm = false
 
-// runFused decodes the sequences of a compressed block, then executes them.
-func (d *zdec) runFused(out []byte, it *zitem) ([]byte, error) {
+// runFused decodes the sequences of a compressed block, then executes them
+// with x.
+func (d *zdec) runFused(x *zexec, out []byte, it *zitem) ([]byte, error) {
 	d.parseSeqs(it)
 	if it.err != nil {
 		return out, it.err
 	}
-	return d.x.run(out, it)
+	return x.run(out, it)
 }
