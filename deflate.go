@@ -2,7 +2,6 @@ package fastgzip
 
 import (
 	"encoding/binary"
-	"slices"
 	"unsafe"
 )
 
@@ -328,7 +327,7 @@ func (e *encoder) writeTokens(raw []byte, size int, litLen []uint8, litCode []ui
 	// o never passes the bytes of the bits pending and the block, and the
 	// last 8-byte store needs 8 more. A bound from the token count instead
 	// was so loose that small inputs reallocated out for every block.
-	out := slices.Grow(e.bw.out, (int(e.bw.n)+size)/8+16)
+	out := growOut(e.bw.out, (int(e.bw.n)+size)/8+16)
 	o := len(out)
 	out = out[:cap(out)]
 	op := unsafe.Pointer(unsafe.SliceData(out))
@@ -393,6 +392,18 @@ func (e *encoder) storedBits(n int) int {
 	return chunks*(3+32) + int(pad) + (chunks-1)*5 + 8*n
 }
 
+// growOut returns b with room for n more bytes. It doubles the capacity:
+// append grows large slices by a quarter, and the copies made Gzip without a
+// preallocated output 5-11% slower at level 1.
+func growOut(b []byte, n int) []byte {
+	if cap(b)-len(b) >= n {
+		return b
+	}
+	nb := make([]byte, len(b), max(2*cap(b), len(b)+n))
+	copy(nb, b)
+	return nb
+}
+
 func (e *encoder) writeStored(raw []byte, final bool) {
 	for first := true; first || len(raw) > 0; first = false {
 		n := min(len(raw), maxStored)
@@ -402,6 +413,7 @@ func (e *encoder) writeStored(raw []byte, final bool) {
 		}
 		e.bw.write(last, 3)
 		e.bw.align()
+		e.bw.out = growOut(e.bw.out, 4+n)
 		e.bw.out = binary.LittleEndian.AppendUint16(e.bw.out, uint16(n))
 		e.bw.out = binary.LittleEndian.AppendUint16(e.bw.out, ^uint16(n))
 		e.bw.out = append(e.bw.out, raw[:n]...)

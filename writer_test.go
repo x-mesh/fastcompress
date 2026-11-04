@@ -124,6 +124,27 @@ func (w *failWriter) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
+// shortWriter writes one byte less than asked, without an error.
+type shortWriter struct{}
+
+func (shortWriter) Write(p []byte) (int, error) { return max(len(p)-1, 0), nil }
+
+func TestWriterShortWrite(t *testing.T) {
+	r := rand.New(rand.NewPCG(55, 56))
+	data := sampleData(r, chunkSize+100)
+	for _, conc := range []int{0, 2} {
+		z := NewWriter(shortWriter{})
+		z.SetConcurrency(conc)
+		_, err := z.Write(data)
+		if err == nil {
+			err = z.Close()
+		}
+		if !errors.Is(err, io.ErrShortWrite) {
+			t.Errorf("concurrency %d: got %v", conc, err)
+		}
+	}
+}
+
 func TestWriterErrors(t *testing.T) {
 	if _, err := NewWriterLevel(io.Discard, 10); err == nil {
 		t.Error("level 10: no error")

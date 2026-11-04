@@ -89,6 +89,10 @@ func main() {
 	stream := flag.Bool("stream", false, "decode through io.Reader from a 1 MB bufio.Reader, as edc grep does")
 	level := flag.Int("compress", 0, "compress the files at this level (1-9) instead of decoding them")
 	flag.Parse()
+	if *runs < 1 {
+		fmt.Fprintln(os.Stderr, "-n must be at least 1")
+		os.Exit(2)
+	}
 
 	var files []string
 	for _, a := range flag.Args() {

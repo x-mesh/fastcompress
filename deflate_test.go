@@ -441,3 +441,17 @@ func BenchmarkWriter(b *testing.B) {
 		})
 	}
 }
+
+// TestGzipCapacity checks that Gzip returns no more than twice the capacity
+// its output needs, however well the input compresses.
+func TestGzipCapacity(t *testing.T) {
+	r := rand.New(rand.NewPCG(57, 58))
+	for _, in := range [][]byte{make([]byte, 4<<20), sampleData(r, 4<<20)} {
+		for _, level := range []int{HuffmanOnly, NoCompression, BestSpeed, DefaultCompression, BestCompression} {
+			out, _ := Gzip(in, level)
+			if cap(out) > 2*len(out) {
+				t.Errorf("level %d: %d bytes in a capacity of %d", level, len(out), cap(out))
+			}
+		}
+	}
+}

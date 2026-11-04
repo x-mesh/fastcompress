@@ -22,7 +22,6 @@ var errConcurrencyAfterWrite = errors.New("fastgzip: SetConcurrency after Write"
 // The output depends only on buf, dict, level and final.
 func compressChunk(dst, buf []byte, dict, level int, final bool) []byte {
 	c := getCompressor(level)
-	defer compressorPool.Put(c)
 	c.e.bw.out = dst
 	if c.m != nil && dict > 0 {
 		// Encoding the dictionary fills the match tables; its tokens are
@@ -42,7 +41,11 @@ func compressChunk(dst, buf []byte, dict, level int, final bool) []byte {
 	if !final {
 		c.e.writeStored(nil, false)
 	}
-	return c.e.finish()
+	dst = c.e.finish()
+	// the pool must not keep the caller's output alive
+	c.e.bw.out = nil
+	compressorPool.Put(c)
+	return dst
 }
 
 // GzipConcurrent compresses src to one gzip member, like Gzip, on up to n
@@ -191,7 +194,8 @@ func (z *Writer) dispatch(final bool) error {
 	}
 	// Twice as many chunks in flight as goroutines keep the goroutines busy
 	// while the oldest chunk is awaited.
-	for len(z.queue) >= 2*z.conc {
+	// z.conc can be up to MaxInt, where 2*z.conc overflows
+	for len(z.queue)/2 >= z.conc {
 		if err := z.writeHead(); err != nil {
 			return err
 		}
@@ -215,7 +219,7 @@ func (z *Writer) writeHead() error {
 	if err := z.output(); err != nil {
 		return err
 	}
-	_, err := z.w.Write(j.out)
+	err := writeFull(z.w, j.out)
 	o := j.out[:0]
 	outPool.Put(&o)
 	if err != nil {

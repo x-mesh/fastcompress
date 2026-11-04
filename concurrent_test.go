@@ -5,6 +5,7 @@ import (
 	"compress/flate"
 	"errors"
 	"io"
+	"math"
 	"math/rand/v2"
 	"testing"
 )
@@ -62,6 +63,9 @@ func TestGzipConcurrentSize(t *testing.T) {
 	for _, level := range []int{BestSpeed, DefaultCompression, BestCompression} {
 		serial, _ := Gzip(data, level)
 		chunked, _ := GzipConcurrent(data, level, 4)
+		if got := stdGunzip(t, chunked); !bytes.Equal(got, data) {
+			t.Fatalf("level %d: output differs", level)
+		}
 		if len(chunked) > len(serial)*1005/1000 {
 			t.Errorf("level %d: %d bytes, Gzip %d", level, len(chunked), len(serial))
 		}
@@ -136,6 +140,12 @@ func TestWriterConcurrentReset(t *testing.T) {
 	if err := z.SetConcurrency(2); !errors.Is(err, errConcurrencyAfterWrite) {
 		t.Errorf("SetConcurrency after Write: %v", err)
 	}
+	var empty bytes.Buffer
+	zf := NewWriter(&empty)
+	zf.Flush()
+	if err := zf.SetConcurrency(2); !errors.Is(err, errConcurrencyAfterWrite) {
+		t.Errorf("SetConcurrency after Flush: %v", err)
+	}
 	// Reset with chunks in flight drops them and keeps the concurrency
 	n := old.Len()
 	z.Reset(&buf)
@@ -188,5 +198,25 @@ func TestWriterConcurrentErrors(t *testing.T) {
 	}
 	if got := stdGunzip(t, buf.Bytes()); !bytes.Equal(got, data) {
 		t.Fatal("output after Reset differs")
+	}
+}
+
+// TestWriterConcurrentMax checks that the largest n does not overflow the
+// limit of chunks in flight.
+func TestWriterConcurrentMax(t *testing.T) {
+	r := rand.New(rand.NewPCG(53, 54))
+	data := sampleData(r, 2*chunkSize+7)
+	want, _ := GzipConcurrent(data, BestSpeed, 1)
+	var buf bytes.Buffer
+	z, _ := NewWriterLevel(&buf, BestSpeed)
+	if err := z.SetConcurrency(math.MaxInt); err != nil {
+		t.Fatal(err)
+	}
+	writeChunks(t, z, r, data, chunkSize)
+	if err := z.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(buf.Bytes(), want) {
+		t.Fatal("output differs from GzipConcurrent")
 	}
 }

@@ -142,8 +142,11 @@ func Deflate(dst, src []byte, level int) ([]byte, error) {
 		return dst, err
 	}
 	c := getCompressor(level)
-	defer compressorPool.Put(c)
-	return c.deflate(dst, src), nil
+	dst = c.deflate(dst, src)
+	// the pool must not keep the caller's output alive
+	c.e.bw.out = nil
+	compressorPool.Put(c)
+	return dst, nil
 }
 
 // deflate appends src to dst as one DEFLATE stream. c must be fresh from
@@ -191,7 +194,9 @@ func Gzip(src []byte, level int) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	dst := appendGzipHeader(make([]byte, 0, len(src)/2+64), l)
+	// An eighth of the input is as fast as half: the output doubles when it
+	// grows. Output that compresses better is copied out below.
+	dst := appendGzipHeader(make([]byte, 0, len(src)/8+64), l)
 	var sum uint32
 	if len(src) >= concurrentCRCSize {
 		// as in Gunzip, the checksum runs beside the encoder
@@ -204,5 +209,9 @@ func Gzip(src []byte, level int) ([]byte, error) {
 		sum = crcUpdate(0, src)
 	}
 	dst = binary.LittleEndian.AppendUint32(dst, sum)
-	return binary.LittleEndian.AppendUint32(dst, uint32(len(src))), nil
+	dst = binary.LittleEndian.AppendUint32(dst, uint32(len(src)))
+	if cap(dst) > 2*len(dst) {
+		dst = append([]byte(nil), dst...)
+	}
+	return dst, nil
 }

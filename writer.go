@@ -138,12 +138,22 @@ func (z *Writer) output() error {
 	if len(out) == 0 {
 		return nil
 	}
-	if _, err := z.w.Write(out); err != nil {
+	if err := writeFull(z.w, out); err != nil {
 		z.err = err
 		return err
 	}
 	z.c.e.bw.out = out[:0]
 	return nil
+}
+
+// writeFull writes b to w. A short write without an error breaks the
+// io.Writer contract and would drop bytes from the stream silently.
+func writeFull(w io.Writer, b []byte) error {
+	n, err := w.Write(b)
+	if err == nil && n < len(b) {
+		err = io.ErrShortWrite
+	}
+	return err
 }
 
 // Flush compresses the pending input and writes it to the underlying writer,
