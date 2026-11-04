@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"os"
 
 	"github.com/x-mesh/fastgzip"
 )
@@ -91,4 +92,32 @@ func ExampleGzipConcurrent() {
 	}
 	fmt.Println(bytes.Equal(got, text))
 	// Output: true
+}
+
+func ExampleZstd() {
+	compressed := fastgzip.Zstd(nil, []byte("hello, hello, hello, zstd"), 1)
+	text, err := fastgzip.Unzstd(compressed)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(string(text))
+	// Output: hello, hello, hello, zstd
+}
+
+func ExampleNewZstdWriter() {
+	var buf bytes.Buffer
+	w := fastgzip.NewZstdWriter(&buf, 3)
+	if _, err := io.WriteString(w, "a stream of text"); err != nil {
+		log.Fatal(err)
+	}
+	if err := w.Close(); err != nil {
+		log.Fatal(err)
+	}
+	z, err := fastgzip.NewZstdReader(&buf)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer z.Close()
+	io.Copy(os.Stdout, z)
+	// Output: a stream of text
 }

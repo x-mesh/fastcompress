@@ -1,5 +1,5 @@
-// Package fastgzip decodes and encodes gzip (RFC 1952) and DEFLATE (RFC 1951)
-// data in Go, without cgo.
+// Package fastgzip decodes and encodes gzip (RFC 1952), DEFLATE (RFC 1951)
+// and zstd (RFC 8878) data in Go, without cgo.
 //
 // Reader replaces compress/gzip.Reader for reading: NewReader, Read, Reset and
 // Close behave the same, and concatenated members are read as one stream.
@@ -23,4 +23,10 @@
 // and an 8-byte hash table at levels 4-6, and with zlib-style hash chains and
 // lazy matching at levels 7-9. It writes each block as the smallest of a
 // stored, fixed or dynamic block.
+//
+// Unzstd and ZstdReader decode zstd frames, and Zstd and ZstdWriter encode
+// them at level 1 (zstd's fast strategy) or 3 (double fast). On amd64 with
+// BMI2, assembly decodes and encodes the sequences, decodes the Huffman
+// literals and executes the sequences. Large inputs use a second goroutine
+// with more than one CPU.
 package fastgzip

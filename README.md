@@ -1,6 +1,6 @@
 # fastgzip
 
-fastgzip decodes and encodes gzip and DEFLATE data in Go, without cgo. On an Apple M1 Pro, it decodes a 100 MB log about 3.3 times faster than `klauspost/compress/gzip`, at the speed of the system zlib on macOS.
+fastgzip decodes and encodes gzip, DEFLATE and zstd data in Go, without cgo. On an Apple M1 Pro, it decodes a 100 MB log about 3.3 times faster than `klauspost/compress/gzip`, at the speed of the system zlib on macOS. On an Intel Xeon, its zstd decoder and encoder are faster than `klauspost/compress/zstd` on each file that we measured.
 
 ## Install
 
@@ -81,6 +81,45 @@ The input goes in chunks of approximately 1 MB. Each chunk uses the 32 KB before
 
 A concurrent `Writer` holds up to two chunks of input and output for each goroutine. `GzipConcurrent` with a count of 0 uses `runtime.GOMAXPROCS(0)` goroutines.
 
+## zstd
+
+`Unzstd` decodes zstd data that is in memory:
+
+```go
+text, err := fastgzip.Unzstd(compressed)
+```
+
+`ZstdReader` reads a zstd stream. `NewZstdReader`, `Read`, `Reset` and `Close` work like the methods of `Reader`:
+
+```go
+z, err := fastgzip.NewZstdReader(file)
+if err != nil {
+	return err
+}
+defer z.Close()
+_, err = io.Copy(dst, z)
+```
+
+`Zstd` appends one zstd frame to `dst`. Level 1 is the fastest. Level 3 gives a better ratio, as `zstd -3` does. Levels below 3 use the method of level 1, and levels above 3 use the method of level 3.
+
+```go
+compressed := fastgzip.Zstd(nil, data, 1)
+```
+
+`ZstdWriter` compresses a stream into one frame. Call `Close` to end the frame:
+
+```go
+w := fastgzip.NewZstdWriter(file, 1)
+if _, err := io.Copy(w, src); err != nil {
+	return err
+}
+return w.Close()
+```
+
+The decoders skip skippable frames. They do not support dictionaries. A `ZstdReader` refuses a window larger than 128 MB, as the zstd library does by default. The same errors apply: a bad magic number gives `ErrHeader`, and a bad content checksum gives `ErrChecksum`.
+
+With more than one CPU, the zstd code uses a second goroutine for 1 MB of data or more. `ZstdReader` uses a third goroutine, and `ZstdWriter` always uses a second goroutine. This makes one call faster, but it uses more CPU time. Set `GOMAXPROCS=1` to use one goroutine. A write error of the writer under a `ZstdWriter` shows at the next `Flush` or `Close`.
+
 ## Differences from compress/gzip
 
 - `Reader` does not give the header fields (`Name`, `Comment`, `ModTime`).
@@ -90,7 +129,7 @@ A concurrent `Writer` holds up to two chunks of input and output for each gorout
 
 ## Performance
 
-### Decompression
+### gzip decompression
 
 The table shows the median time of 11 runs in milliseconds. The machine is an Apple M1 Pro with macOS 27 and Go 1.27.3. Each decoder reads through a 1 MB `bufio.Reader` with 64 KB reads.
 
@@ -104,7 +143,7 @@ The table shows the median time of 11 runs in milliseconds. The machine is an Ap
 
 For comparison, Apple's libz decodes the 100 MB log in 71.4 ms with one C `inflate` call. `Gunzip` decodes it in 68.7 ms. On Linux arm64 (Docker on the same Mac), the `Reader` time for the log is 70.9 ms. On the same machine, klauspost needs 244 ms, and Debian zlib 1.3.1 needs 193 ms through Python.
 
-We did not measure decompression on amd64.
+We did not measure gzip decompression on amd64.
 
 To measure your own files, run the benchmark tool. It also makes sure that all the decoders give the same output.
 
@@ -113,7 +152,7 @@ cd bench
 go run . -stream -n 9 /path/to/*.gz
 ```
 
-### Compression
+### gzip compression
 
 We compared fastgzip with `klauspost/compress/gzip` at all levels on large files. At levels 1-3, fastgzip needs 3-19% less time. At levels 4-9, it needs from 29% less to 10% more time. It needs more time only for the binaries at levels 4 and 6, and for the log at levels 6 and 7. The output size is approximately the same. On 8 goroutines, `GzipConcurrent` needs 3.9-5.6 times less time than `Gzip`, with the same output size to 0.001%. The table shows levels 1, 6 and 9.
 
@@ -146,13 +185,67 @@ For small inputs, the table shows the time of one `Gzip` call in microseconds, a
 
 At level 6, the hash tables of fastgzip have 768 KB, and small inputs use them less efficiently.
 
-We did not measure compression on arm64.
+We did not measure gzip compression on arm64.
 
 To measure compression, give the uncompressed files and a level to the benchmark tool. It decodes each output with `compress/gzip` and compares it with the input.
 
 ```sh
 cd bench
 go run . -compress 6 -n 5 /path/to/files/*
+```
+
+### zstd
+
+The tables show the median time in milliseconds. The machine is an Intel Xeon Silver 4112 (4 cores, 8 threads) with Linux and Go 1.27.1. The other library is `klauspost/compress` v1.20.3. Other users also loaded the machine, so a time can vary by about 5%.
+
+The files are a 100 MB synthetic application log, a 45 MB tar of Go binaries and a 61 MB tar of Go source. The zstd 1.5.5 command compressed them at levels 1, 3 and 19.
+
+Decoding, 21 runs. The readers read through a 1 MB `bufio.Reader` with 64 KB reads. `DecodeAll` uses one goroutine with any setting, so the table shows the faster of two runs with one and four goroutines. `Reader` has its default concurrency.
+
+| File | Level | `DecodeAll` | `Unzstd` | `Reader` | `ZstdReader` |
+|---|---|---|---|---|---|
+| Log | 1 | 121.8 | 89.6 | 100.3 | 80.9 |
+| Log | 3 | 128.2 | 89.8 | 93.6 | 88.0 |
+| Log | 19 | 109.4 | 63.6 | 78.0 | 72.9 |
+| Binaries | 1 | 72.2 | 60.5 | 54.6 | 45.9 |
+| Binaries | 3 | 80.2 | 57.5 | 61.5 | 54.2 |
+| Binaries | 19 | 99.1 | 88.0 | 99.2 | 83.6 |
+| Source | 1 | 76.0 | 55.8 | 62.9 | 49.0 |
+| Source | 3 | 84.5 | 58.0 | 68.7 | 60.2 |
+| Source | 19 | 92.5 | 83.4 | 93.3 | 80.7 |
+
+With `GOMAXPROCS=1`, `Unzstd` takes 72 to 126 ms on these files. That is between 3% slower and 14% faster than `DecodeAll`.
+
+Encoding from memory, 9 runs, with the ratio in parentheses. `klauspost/compress` uses `zstd.EncoderLevelFromZstd`: `SpeedFastest` for level 1 and `SpeedDefault` for level 3. `EncodeAll` uses one goroutine.
+
+| File | Level | `EncodeAll` | `Zstd` | `Zstd`, one CPU |
+|---|---|---|---|---|
+| Log | 1 | 426.0 (6.110) | 237.6 (6.153) | 346.4 |
+| Binaries | 1 | 265.8 (2.704) | 147.9 (2.745) | 232.2 |
+| Source | 1 | 275.1 (4.129) | 168.8 (4.341) | 244.4 |
+| Log | 3 | 569.1 (5.952) | 421.0 (6.075) | 535.9 |
+| Binaries | 3 | 368.2 (2.829) | 277.4 (2.827) | 363.8 |
+| Source | 3 | 360.9 (4.655) | 260.6 (4.717) | 337.4 |
+
+Encoding a stream with 64 KB writes, 7 runs. The ratios are the same as above. The `klauspost/compress` `Encoder` has its default concurrency.
+
+| File | Level | `Encoder` | `ZstdWriter` |
+|---|---|---|---|
+| Log | 1 | 339.3 | 284.2 |
+| Binaries | 1 | 217.0 | 168.1 |
+| Source | 1 | 288.7 | 190.1 |
+| Log | 3 | 503.1 | 467.6 |
+| Binaries | 3 | 307.8 | 290.5 |
+| Source | 3 | 329.4 | 296.7 |
+
+We did not measure zstd on arm64. On arm64, the zstd code uses Go without assembly.
+
+To measure your own `.zst` files, run the benchmark tool. It compares the zstd decoders and makes sure that they give the same output. With `-compress` and `-zstd`, it compresses the files at that level and makes sure that both decoders restore them.
+
+```sh
+cd bench
+go run . -stream -n 9 /path/to/*.zst
+go run . -compress 3 -zstd -n 9 /path/to/files/*
 ```
 
 ## How it compresses
@@ -177,6 +270,17 @@ go run . -compress 6 -n 5 /path/to/files/*
 - On arm64, an assembly function computes CRC-32 with `PMULL` carry-less multiplies. It folds eight 128-bit lanes in parallel. This is 45 GB/s, and `hash/crc32` is 8.4 GB/s.
 - Above 1 MB, `Gunzip` computes the CRC-32 on a second goroutine. The decoder gives it the output in steps of 1 MB or more, because each step can wake the goroutine.
 
+## Why zstd is fast
+
+- On amd64 with BMI2, assembly decodes the sequences and the four Huffman streams of the literals, executes the sequences, and encodes the sequences. BMI2 shifts take their count from any register. With `GOAMD64=v3` alone, the Go decoder was 15% faster, because the Go loops spent instructions to move shift counts.
+- The decoder decodes the sequences of a block into an array, then executes them. Each of the two loops keeps its state in registers.
+- Execution copies 16 bytes at a time. A match closer than 16 bytes starts with one `PSHUFB` that makes the pattern. The loop prefetches the source of the match eight sequences ahead.
+- A large frame decodes on two goroutines: one decodes the literals and the sequences, and the other executes them.
+- Each hash table entry of the encoder keeps the first 4 bytes at its position. A candidate that does not match costs no load from the input.
+- The fast level checks the last offset two bytes ahead. Both levels encode a match at one of the last three offsets as a repeat offset.
+- The encoder chooses the predefined, the previous or a new FSE table by its estimated size.
+- A large input compresses on two goroutines: one finds the matches, and the other encodes them.
+
 ## Safety
 
 The fast decode loop uses `unsafe` pointers and has no bounds checks. These limits keep each access in its buffer:
@@ -194,6 +298,17 @@ The token writer stores 8 bytes at a time through an `unsafe` pointer. Before ea
 
 The tests compare the decoder output with `compress/flate` and `compress/gzip` on random and fuzz input. They decode the compressor output with `compress/flate`, `compress/gzip` and fastgzip. The tests run with `-race` and with `-gcflags=all=-d=checkptr`. We ran the decoder tests on darwin/arm64, linux/arm64 and linux/amd64. We ran the compressor tests on linux/amd64 only.
 
+The zstd decoder also uses `unsafe` pointers and assembly without bounds checks. These limits keep each access in its buffer:
+
+- Each table index has a mask with the table size.
+- Before the decoder copies a sequence, it compares the sequence with the literals that remain and with the end of the block. It compares each offset with the output of the frame and with the window.
+- The output has 32 spare bytes after each block, and the literals have 32 spare bytes after their end.
+- The assembly loops stop 24 bytes before the start of a bitstream. The Go code decodes the rest.
+
+The zstd encoder writes through `unsafe` pointers into space that it reserves first. Each table index has a mask, and each position stays 8 bytes before the end of the input.
+
+The zstd tests decode files from the zstd 1.5.5 command and compare them with the output of that command. In the `bench` module, the tests compare the decoder with `klauspost/compress` on fuzz input, and make sure that fastgzip does not accept input that `klauspost/compress` refuses. The fastgzip and `klauspost/compress` decoders must restore the encoder output. We also decoded the encoder output with the zstd command. Other tests make sure that the assembly and the Go code give the same output, and run the Go code with `-tags purego`.
+
 ## Tests
 
 ```sh
@@ -210,6 +325,18 @@ FASTGZIP_CORPUS=/path/to/gz-files go test .
 
 To profile one file, set `FASTGZIP_BENCH` and run `BenchmarkReader` or `BenchmarkGunzip`. To profile compression of one uncompressed file, set `FASTGZIP_RAW` and run `BenchmarkGzip`.
 
+For zstd:
+
+```sh
+go test -run '^$' -fuzz FuzzUnzstd -fuzztime 60s .
+go test -run '^$' -fuzz FuzzZstdReader -fuzztime 60s .
+go test -run '^$' -fuzz FuzzZstdRoundTrip -fuzztime 60s .
+go test -run '^$' -fuzz FuzzZstdWriter -fuzztime 60s .
+cd bench && go test .
+```
+
+`FASTGZIP_ZSTD_CORPUS` names a directory of `.zst` files to decode. If a file with the same name without `.zst` exists, the test compares the output with it. `FASTGZIP_ZSTD_BENCH` names one `.zst` file for `BenchmarkUnzstd` and `BenchmarkZstdReader`. `FASTGZIP_ZSTD_ENC_BENCH` names one file for `BenchmarkZstd`, at the level in `FASTGZIP_ZSTD_LEVEL`.
+
 ## License
 
-MIT. The table builder in `tables.go` is a port of zlib 1.2.12. [NOTICE](NOTICE) has the zlib license.
+MIT. The table builder in `tables.go` is a port of zlib 1.2.12. Parts of the zstd code follow Go's `internal/zstd` and the zstd library. [NOTICE](NOTICE) has their licenses.
