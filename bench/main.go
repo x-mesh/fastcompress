@@ -1,5 +1,6 @@
 // Command bench measures gzip decompression with the Go standard library,
-// klauspost/compress, and fastgzip. Each file is decoded whole from memory,
+// klauspost/compress, and fastgzip. With -compress it measures compression
+// at that level instead. Each file is decoded whole from memory,
 // or with -stream through io.Reader from a 1 MB bufio.Reader. It checks that
 // all decoders produce the same output and prints the median of -n runs.
 //
@@ -86,12 +87,21 @@ func main() {
 	runs := flag.Int("n", 9, "runs per file and decoder")
 	only := flag.String("only", "", "run only this decoder")
 	stream := flag.Bool("stream", false, "decode through io.Reader from a 1 MB bufio.Reader, as edc grep does")
+	level := flag.Int("compress", 0, "compress the files at this level (1-9) instead of decoding them")
 	flag.Parse()
+	if *runs < 1 {
+		fmt.Fprintln(os.Stderr, "-n must be at least 1")
+		os.Exit(2)
+	}
 
 	var files []string
 	for _, a := range flag.Args() {
 		m, _ := filepath.Glob(a)
 		files = append(files, m...)
+	}
+	if *level != 0 {
+		benchCompress(files, *level, *runs, *only)
+		return
 	}
 
 	fmt.Printf("%-18s", "file")
