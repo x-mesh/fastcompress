@@ -31,6 +31,7 @@ jobs:
       - run: go test -run '^$' -fuzz '^FuzzWriter$' -fuzztime 20s -fuzzminimizetime 1s ./gzip
       - run: go test -tags purego ./...
       - run: go test -run '^$' -fuzz '^FuzzDecode$' -fuzztime 20s -fuzzminimizetime 1s ./zstd
+      - run: go test -run '^$' -fuzz '^FuzzAsmMatchesGo$' -fuzztime 20s -fuzzminimizetime 1s ./zstd
       - run: go test -run '^$' -fuzz '^FuzzReader$' -fuzztime 20s -fuzzminimizetime 1s ./zstd
       - run: go test -run '^$' -fuzz '^FuzzRoundTrip$' -fuzztime 20s -fuzzminimizetime 1s ./zstd
       - run: go test -run '^$' -fuzz '^FuzzWriter$' -fuzztime 20s -fuzzminimizetime 1s ./zstd

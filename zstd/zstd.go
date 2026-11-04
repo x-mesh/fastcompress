@@ -405,11 +405,10 @@ func (d *zdec) parseSeqs(it *zitem) {
 	it.seqs = seqs
 }
 
-// run executes a parsed block onto out and hashes its output.
-func (x *zexec) run(out []byte, it *zitem) ([]byte, error) {
-	// room bounds the block's output: the block maximum, and what is left
-	// of a declared content size, so a frame that fills its declared size
-	// exactly never grows out
+// room returns out with space for the next block and the most output the
+// block may write: the block maximum, and what is left of a declared content
+// size, so a frame that fills its declared size exactly never grows out.
+func (x *zexec) room(out []byte) ([]byte, int) {
 	room := x.blockMax
 	if x.fcs != fcsUnknown {
 		room = int(min(uint64(room), x.fcs-x.produced))
@@ -417,6 +416,21 @@ func (x *zexec) run(out []byte, it *zitem) ([]byte, error) {
 	if cap(out)-len(out) < room+zOutMargin {
 		out = growOut(out, room+zOutMargin)
 	}
+	return out, room
+}
+
+// finish counts and hashes the output of a block, out[start:].
+func (x *zexec) finish(out []byte, start int) {
+	x.produced += uint64(len(out) - start)
+	if x.checksum {
+		// while the block is still in cache
+		x.hash.write(out[start:])
+	}
+}
+
+// run executes a parsed block onto out and hashes its output.
+func (x *zexec) run(out []byte, it *zitem) ([]byte, error) {
+	out, room := x.room(out)
 	start := len(out)
 	switch {
 	case it.typ == 0:
@@ -444,11 +458,7 @@ func (x *zexec) run(out []byte, it *zitem) ([]byte, error) {
 			return out, err
 		}
 	}
-	x.produced += uint64(len(out) - start)
-	if x.checksum {
-		// while the block is still in cache
-		x.hash.write(out[start:])
-	}
+	x.finish(out, start)
 	return out, nil
 }
 
@@ -461,12 +471,17 @@ func (d *zdec) blocks(out, src []byte, h *frameHeader) ([]byte, int, error) {
 	zb := zbuf{lit: d.lit, seqs: d.seqs}
 	i := 0
 	for {
-		it := d.parse(src, i, &zb)
-		if it.err != nil {
-			return out, 0, it.err
-		}
 		var err error
-		out, err = d.x.run(out, &it)
+		it := d.parseLits(src, i, &zb)
+		if useFusedAsm && it.err == nil && it.typ == 2 {
+			out, err = d.runFused(out, &it)
+		} else {
+			d.parseSeqs(&it)
+			if it.err != nil {
+				return out, 0, it.err
+			}
+			out, err = d.x.run(out, &it)
+		}
 		if err != nil {
 			return out, 0, err
 		}

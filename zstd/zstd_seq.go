@@ -124,27 +124,62 @@ type seqVal struct {
 	ll, ml, off uint32
 }
 
+// seqState is the sequence bitstream between two sequences: the reader, the
+// three FSE states and the repeat offsets.
+type seqState struct {
+	br               revReader
+	ll, ml, of       uint
+	rep0, rep1, rep2 uint
+}
+
 // decodeSeqs decodes len(seqs) sequences from the backward bitstream
 // src[start:end], resolving repeat offsets.
+func (d *zdec) decodeSeqs(seqs []seqVal, src []byte, start, end int) error {
+	var s seqState
+	if err := d.seqInit(&s, src, start, end); err != nil {
+		return err
+	}
+	d.seqDecode(&s, seqs)
+	return d.seqDone(&s)
+}
+
+// seqInit starts the bitstream src[start:end]: it reads the initial states.
+func (d *zdec) seqInit(s *seqState, src []byte, start, end int) error {
+	if err := s.br.init(src, start, end); err != nil {
+		return err
+	}
+	s.ll = uint(s.br.read(d.seq.log[seqLL])) + uint(kindOffset(seqLL))
+	s.of = uint(s.br.read(d.seq.log[seqOF])) + uint(kindOffset(seqOF))
+	s.ml = uint(s.br.read(d.seq.log[seqML])) + uint(kindOffset(seqML))
+	s.br.reload()
+	s.rep0, s.rep1, s.rep2 = d.rep[0], d.rep[1], d.rep[2]
+	return nil
+}
+
+// seqDone checks that the sequences used the whole bitstream and keeps the
+// repeat offsets for the next block.
+func (d *zdec) seqDone(s *seqState) error {
+	s.br.reload()
+	if !s.br.done() {
+		return ErrCorrupt
+	}
+	d.rep = [3]uint{s.rep0, s.rep1, s.rep2}
+	return nil
+}
+
+// seqDecode decodes len(seqs) sequences. After the last one it reads no
+// states, as the format has none there.
 //
 // Table loads go through an unsafe pointer: every state is masked to
 // seqTabMask, inside seqTables.tab.
-func (d *zdec) decodeSeqs(seqs []seqVal, src []byte, start, end int) error {
-	var br revReader
-	if err := br.init(src, start, end); err != nil {
-		return err
-	}
-	s := &d.seq
-	tp := unsafe.Pointer(&s.tab)
-	llS := uint(br.read(s.log[seqLL])) + uint(kindOffset(seqLL))
-	ofS := uint(br.read(s.log[seqOF])) + uint(kindOffset(seqOF))
-	mlS := uint(br.read(s.log[seqML])) + uint(kindOffset(seqML))
-	br.reload()
-
+func (d *zdec) seqDecode(s *seqState, seqs []seqVal) {
+	br := &s.br
+	tp := unsafe.Pointer(&d.seq.tab)
+	llS, mlS, ofS := s.ll, s.ml, s.of
 	c, consumed, p := br.c, br.consumed, br.p
 	pfast := br.start + 8
-	inp := unsafe.Pointer(unsafe.SliceData(src))
-	rep0, rep1, rep2 := d.rep[0], d.rep[1], d.rep[2]
+	inp := unsafe.Pointer(unsafe.SliceData(br.src))
+	rep0, rep1, rep2 := s.rep0, s.rep1, s.rep2
 	sp := unsafe.Pointer(unsafe.SliceData(seqs))
 	n := len(seqs)
 
@@ -159,7 +194,9 @@ func (d *zdec) decodeSeqs(seqs []seqVal, src []byte, start, end int) error {
 		p, c, consumed = ctx.p, ctx.c, uint(ctx.bits)
 		llS, mlS, ofS = uint(ctx.ll), uint(ctx.ml), uint(ctx.of)
 		rep0, rep1, rep2 = uint(ctx.rep[0]), uint(ctx.rep[1]), uint(ctx.rep[2])
-		sp = unsafe.Add(sp, uintptr(ctx.i)*unsafe.Sizeof(seqVal{}))
+		if ctx.i < n {
+			sp = unsafe.Add(sp, uintptr(ctx.i)*unsafe.Sizeof(seqVal{}))
+		}
 		n -= ctx.i
 	}
 
@@ -210,11 +247,13 @@ func (d *zdec) decodeSeqs(seqs []seqVal, src []byte, start, end int) error {
 			}
 		}
 		*(*seqVal)(sp) = seqVal{uint32(llv), uint32(mlv), uint32(rep0)}
-		sp = unsafe.Add(sp, unsafe.Sizeof(seqVal{}))
 		n--
 		if n == 0 {
 			break
 		}
+		// here and above, after the check: checkptr refuses a pointer past
+		// the end of seqs
+		sp = unsafe.Add(sp, unsafe.Sizeof(seqVal{}))
 
 		nb := uint(llE>>40) & 0xff
 		llS = uint(llE>>48) + uint((c<<(consumed&63))>>1>>((63-nb)&63))
@@ -236,12 +275,8 @@ func (d *zdec) decodeSeqs(seqs []seqVal, src []byte, start, end int) error {
 		}
 	}
 	br.c, br.consumed, br.p = c, consumed, p
-	br.reload()
-	if !br.done() {
-		return ErrCorrupt
-	}
-	d.rep = [3]uint{rep0, rep1, rep2}
-	return nil
+	s.ll, s.ml, s.of = llS, mlS, ofS
+	s.rep0, s.rep1, s.rep2 = rep0, rep1, rep2
 }
 
 // execBlock executes seqs with the literals lits onto out. out must have

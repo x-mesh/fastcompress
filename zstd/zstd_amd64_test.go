@@ -9,63 +9,11 @@ import (
 	"unsafe"
 )
 
-func TestSeqCtxLayout(t *testing.T) {
-	var c seqCtx
-	for _, f := range []struct {
-		name     string
-		got, asm uintptr
-	}{
-		{"src", unsafe.Offsetof(c.src), 0},
-		{"p", unsafe.Offsetof(c.p), 8},
-		{"plim", unsafe.Offsetof(c.plim), 16},
-		{"c", unsafe.Offsetof(c.c), 24},
-		{"bits", unsafe.Offsetof(c.bits), 32},
-		{"tab", unsafe.Offsetof(c.tab), 40},
-		{"ll", unsafe.Offsetof(c.ll), 48},
-		{"ml", unsafe.Offsetof(c.ml), 56},
-		{"of", unsafe.Offsetof(c.of), 64},
-		{"rep", unsafe.Offsetof(c.rep), 72},
-		{"seqs", unsafe.Offsetof(c.seqs), 96},
-		{"i", unsafe.Offsetof(c.i), 104},
-		{"n", unsafe.Offsetof(c.n), 112},
-		{"plimAbs", unsafe.Offsetof(c.plimAbs), 120},
-		{"endAbs", unsafe.Offsetof(c.endAbs), 128},
-	} {
-		if f.got != f.asm {
-			t.Errorf("seqCtx.%s at %d, assembly expects %d", f.name, f.got, f.asm)
-		}
-	}
-	if unsafe.Sizeof(seqVal{}) != 12 {
-		t.Errorf("seqVal is %d bytes, assembly expects 12", unsafe.Sizeof(seqVal{}))
-	}
-}
-
-// The Go loops and the assembly must decode the same data.
-func TestAsmMatchesGo(t *testing.T) {
-	if !useSeqAsm {
-		t.Skip("no BMI2")
-	}
-	vs := zstdVectors(t)
-	run := func() map[string]string {
-		m := map[string]string{}
-		for _, v := range vs {
-			out, err := Decode(v.src)
-			m[v.name] = sha256Hex(out)
-			if err != nil {
-				m[v.name] = err.Error()
-			}
-		}
-		return m
-	}
-	withAsm := run()
+// decodeAsmOff turns off the decoding assembly until the returned function
+// runs.
+func decodeAsmOff() func() {
 	useSeqAsm, useHufAsm, useExecAsm = false, false, false
-	defer func() { useSeqAsm, useHufAsm, useExecAsm = true, true, true }()
-	withGo := run()
-	for k, v := range withAsm {
-		if withGo[k] != v {
-			t.Errorf("%s: assembly %s, Go %s", k, v, withGo[k])
-		}
-	}
+	return func() { useSeqAsm, useHufAsm, useExecAsm = true, true, true }
 }
 
 func TestHufCtxLayout(t *testing.T) {
@@ -86,32 +34,6 @@ func TestHufCtxLayout(t *testing.T) {
 	} {
 		if f.got != f.asm {
 			t.Errorf("hufCtx.%s at %d, assembly expects %d", f.name, f.got, f.asm)
-		}
-	}
-}
-
-func TestExecCtxLayout(t *testing.T) {
-	var c execCtx
-	for _, f := range []struct {
-		name     string
-		got, asm uintptr
-	}{
-		{"out", unsafe.Offsetof(c.out), 0},
-		{"o", unsafe.Offsetof(c.o), 8},
-		{"end", unsafe.Offsetof(c.end), 16},
-		{"lits", unsafe.Offsetof(c.lits), 24},
-		{"lit", unsafe.Offsetof(c.lit), 32},
-		{"litEnd", unsafe.Offsetof(c.litEnd), 40},
-		{"seqs", unsafe.Offsetof(c.seqs), 48},
-		{"n", unsafe.Offsetof(c.n), 56},
-		{"fs", unsafe.Offsetof(c.fs), 64},
-		{"window", unsafe.Offsetof(c.window), 72},
-		{"masks", unsafe.Offsetof(c.masks), 80},
-		{"strides", unsafe.Offsetof(c.strides), 88},
-		{"err", unsafe.Offsetof(c.err), 96},
-	} {
-		if f.got != f.asm {
-			t.Errorf("execCtx.%s at %d, assembly expects %d", f.name, f.got, f.asm)
 		}
 	}
 }
@@ -153,9 +75,9 @@ func TestEncAsmMatchesGo(t *testing.T) {
 	data := sampleData(r, 3<<20)
 	for _, level := range []int{1, 3} {
 		withAsm := Encode(nil, data, level)
-		useSeqAsm = false
+		useEncAsm = false
 		withGo := Encode(nil, data, level)
-		useSeqAsm = true
+		useEncAsm = true
 		if !bytes.Equal(withAsm, withGo) {
 			t.Errorf("level %d: assembly and Go encodings differ", level)
 		}

@@ -8,26 +8,6 @@ import (
 	"unsafe"
 )
 
-// seqCtx carries the state of zdec.decodeSeqs into decodeSeqsBMI2. Its
-// layout matches the CTX_ offsets in zstd_amd64.s.
-type seqCtx struct {
-	src     unsafe.Pointer
-	p       int // index in src of the 8 bytes in c
-	plim    int // decode while p >= plim
-	c       uint64
-	bits    uint64 // bits of c already read
-	tab     unsafe.Pointer
-	ll      uint64 // states: indexes into seqTables.tab
-	ml      uint64
-	of      uint64
-	rep     [3]uint64
-	seqs    unsafe.Pointer
-	i       int // next sequence to decode
-	n       int
-	plimAbs uintptr // scratch for the assembly
-	endAbs  uintptr
-}
-
 // BMI2 shifts take any register as the count; without them the Go loop
 // spends instructions moving counts into CX: GOAMD64=v3 alone made it 15%
 // faster.
@@ -90,60 +70,13 @@ func (h *hufTable) decode4Asm(br *[4]revReader, bounds [5]int, src, out []byte, 
 	return ctx.rounds * 5
 }
 
-// execCtx carries execBlock's state into execSeqsSSE. Its layout matches the
-// EX_ offsets in zstd_amd64.s.
-type execCtx struct {
-	out     unsafe.Pointer
-	o       int // output position
-	end     int // block end
-	lits    unsafe.Pointer
-	lit     int // next literal
-	litEnd  int
-	seqs    unsafe.Pointer
-	n       int
-	fs      int // frame start
-	window  int
-	masks   unsafe.Pointer // &shufMasks
-	strides unsafe.Pointer // &stride16
-	err     int
-}
-
-// shufMasks[d] makes PSHUFB repeat the first d of 16 bytes.
-var shufMasks [16][16]byte
-
-func init() {
-	for d := 1; d < 16; d++ {
-		for i := range 16 {
-			shufMasks[d][i] = byte(i % d)
-		}
-	}
-}
-
 // PSHUFB is SSSE3, which every CPU with BMI2 has.
 var useExecAsm = useSeqAsm
 
 //go:noescape
 func execSeqsSSE(ctx *execCtx)
 
-// execBlockAsm runs the sequences of execBlock and returns the output and
-// literal positions after them.
-func execBlockAsm(out []byte, seqs []seqVal, lits []byte, blockEnd, frameStart, window int) (o, lit int, ok bool) {
-	ctx := execCtx{
-		out:     unsafe.Pointer(unsafe.SliceData(out)),
-		o:       len(out),
-		end:     blockEnd,
-		lits:    unsafe.Pointer(unsafe.SliceData(lits)),
-		litEnd:  len(lits),
-		seqs:    unsafe.Pointer(unsafe.SliceData(seqs)),
-		n:       len(seqs),
-		fs:      frameStart,
-		window:  window,
-		masks:   unsafe.Pointer(&shufMasks),
-		strides: unsafe.Pointer(&stride16),
-	}
-	execSeqsSSE(&ctx)
-	return ctx.o, ctx.lit, ctx.err == 0
-}
+func execSeqs(ctx *execCtx) { execSeqsSSE(ctx) }
 
 // seqEncCtx carries encodeSeqBits' state into encSeqsBMI2. Its layout
 // matches the ES_ offsets in zstd_amd64.s.
@@ -163,5 +96,7 @@ type seqEncCtx struct {
 
 //go:noescape
 func encSeqsBMI2(ctx *seqEncCtx)
+
+var useEncAsm = useSeqAsm
 
 func encodeSeqsAsm(ctx *seqEncCtx) { encSeqsBMI2(ctx) }
