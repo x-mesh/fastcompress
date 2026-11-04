@@ -175,7 +175,18 @@ The table shows the median time of 11 runs in milliseconds. The machine is an Ap
 
 For comparison, Apple's libz decodes the 100 MB log in 71.4 ms with one C `inflate` call. `Gunzip` decodes it in 68.7 ms. On Linux arm64 (Docker on the same Mac), the `Reader` time for the log is 70.9 ms. On the same machine, klauspost needs 244 ms, and Debian zlib 1.3.1 needs 193 ms through Python.
 
-We did not measure gzip decompression on amd64.
+The next table is for amd64. The machine is an Intel Xeon Silver 4112 (4 cores, 8 threads) with Linux and Go 1.27.1. The table shows the median time of 11 runs in milliseconds, with the same `Reader` setup. The files are the files of the zstd section, at gzip levels 1 and 6. The "Go loop" column is fastcompress with `-tags purego`, which turns off the assembly.
+
+| File | Size | compress/gzip | klauspost v1.20.3 | fastcompress, Go loop | fastcompress |
+|---|---|---|---|---|---|
+| Log, level 1 | 100 MB | 515 | 386 | 160.7 | 107.5 |
+| Log, level 6 | 100 MB | 493 | 334 | 155.3 | 124.7 |
+| Binaries, level 1 | 45 MB | 410 | 313 | 135.2 | 100.0 |
+| Binaries, level 6 | 45 MB | 368 | 267 | 118.0 | 91.8 |
+| Source, level 1 | 61 MB | 372 | 271 | 118.5 | 80.0 |
+| Source, level 6 | 61 MB | 306 | 225 | 102.9 | 75.6 |
+
+For comparison, libdeflate 1.19 decodes the log at level 1 in 95.4 ms with one C call. `Gunzip` decodes it in 108.8 ms, and in 161.6 ms without the assembly.
 
 To measure your own files, run the benchmark tool. It also makes sure that all the decoders give the same output.
 
@@ -299,6 +310,7 @@ go run . -compress 3 -zstd -n 9 /path/to/files/*
 - The decoder reads the next symbol before it copies a match.
 - The bit count uses the libdeflate method. The decoder subtracts the full entry and uses only the low 6 bits.
 - Match copies move 16 bytes at a time. The first 32 bytes have no loop test, because most matches in log data are 16 bytes or shorter. A short distance repeats as a pattern.
+- On amd64 with BMI2, an assembly function does the steps of the fast loop. It keeps all its state in registers. In the compiled Go loop, each shift count must go into CX, and some values come from the stack again in each step. With `GOAMD64=v3` alone, the Go loop was 8-11% faster. The runtime cannot preempt assembly, so one call stops after about 64 KB of output. At the slowest rate that we measured, 2.9 ns for each byte of output, one call takes about 0.2 ms.
 - On arm64, an assembly function computes CRC-32 with `PMULL` carry-less multiplies. It folds eight 128-bit lanes in parallel. This is 45 GB/s, and `hash/crc32` is 8.4 GB/s.
 - Above 1 MB, `Gunzip` computes the CRC-32 on a second goroutine. The decoder gives it the output in steps of 1 MB or more, because each step can wake the goroutine.
 
@@ -315,7 +327,7 @@ go run . -compress 3 -zstd -n 9 /path/to/files/*
 
 ## Safety
 
-The fast decode loop uses `unsafe` pointers and has no bounds checks. These limits keep each access in its buffer:
+The fast decode loop uses `unsafe` pointers, or assembly on amd64, and has no bounds checks. These limits keep each access in its buffer:
 
 - The loop stops when fewer than 25 input bytes or 323 output bytes remain.
 - Each table index has a mask with the table size.
@@ -328,7 +340,7 @@ The match search of the compressor also loads input through `unsafe` pointers:
 
 The token writer stores 8 bytes at a time through an `unsafe` pointer. Before each block, it reserves the bytes for the bits that the symbol counts of the block give, plus 16 bytes. The tests recount the symbols of each block from its tokens, and they stop if the counts are different.
 
-The tests compare the decoder output with `compress/flate` and `compress/gzip` on random and fuzz input. They decode the compressor output with `compress/flate`, `compress/gzip` and fastcompress. The tests run with `-race` and with `-gcflags=all=-d=checkptr`. We ran the decoder tests on darwin/arm64, linux/arm64 and linux/amd64. We ran the compressor tests on linux/amd64 only.
+The tests compare the decoder output with `compress/flate` and `compress/gzip` on random and fuzz input. They decode the compressor output with `compress/flate`, `compress/gzip` and fastcompress. The tests run with `-race` and with `-gcflags=all=-d=checkptr`. These checks do not see into assembly. Other tests and a fuzz test make sure that the assembly loop and the Go loop decode the same data and refuse the same data. On Linux, a test puts the input and the output of the decoder next to pages that the process cannot access. An access past the end of a buffer then stops the test. The CI also runs the Go loop with `-tags purego`. We ran the decoder tests on darwin/arm64, linux/arm64 and linux/amd64. We ran the compressor tests on linux/amd64 only.
 
 The zstd decoder also uses `unsafe` pointers and assembly without bounds checks. These limits keep each access in its buffer:
 
