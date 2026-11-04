@@ -42,6 +42,9 @@ func entryAt(t unsafe.Pointer, i uint64) uint32 {
 // fast decodes symbols until the end of the block or until the input or
 // output margins run out. done reports the end of the block.
 func (d *decoder) fast(lt, dt []uint32, lmask, dmask uint64) (done bool, err error) {
+	if useFastAsm {
+		return d.fastAsm(lt, dt, lmask, dmask)
+	}
 	inp := unsafe.Pointer(unsafe.SliceData(d.in))
 	ip := d.ip
 	last := len(d.in) - fastInMargin
