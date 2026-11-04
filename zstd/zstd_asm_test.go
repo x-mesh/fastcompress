@@ -5,6 +5,7 @@ package zstd
 import (
 	"bytes"
 	"errors"
+	"flag"
 	"fmt"
 	"math"
 	"math/rand/v2"
@@ -145,6 +146,12 @@ func TestAsmMatchesGo(t *testing.T) {
 func FuzzAsmMatchesGo(f *testing.F) {
 	if !useSeqAsm {
 		f.Skip("no assembly on this CPU")
+	}
+	// Without -fuzz, the seeds run after every test, and the read-ahead
+	// goroutines that TestReaderResetMidStream leaves still read the flags
+	// that decodeAsmOff writes. TestAsmMatchesGo decodes the same inputs.
+	if flag.Lookup("test.fuzz").Value.String() == "" {
+		f.Skip("runs only with -fuzz")
 	}
 	for _, v := range zstdVectors(f) {
 		f.Add(v.src)
