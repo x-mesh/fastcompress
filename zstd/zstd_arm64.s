@@ -561,3 +561,140 @@ fcorrupt:
 	MOVD $1, R1
 	MOVD R1, FX_ERR(R0)
 	RET
+
+// Offsets in seqEncCtx and fseEnc; zstd_asm_test.go checks them.
+#define ES_OUT 0
+#define ES_O 8
+#define ES_SEQS 16
+#define ES_CODES 24
+#define ES_I 32
+#define ES_LLT 40
+#define ES_MLT 48
+#define ES_OFT 56
+#define ES_LLS 64
+#define ES_MLS 72
+#define ES_OFS 80
+#define ES_ACC 88
+#define ES_NB 96
+#define ES_LLINFO 104
+#define ES_MLINFO 112
+#define FE_STATE 8
+#define FE_TT 1032
+
+// ETRANS encodes the code at byte off of the packed codes with state S and
+// the FSE table whose tt and state arrays start at TT and ST: it adds the
+// low k bits of S to R8 and moves S on. S>>k gives both the next state and,
+// shifted back, the bits to keep, as arm64 has no BZHI.
+#define ETRANS(off, TT, ST, S) \
+	MOVBU off(R14), R2     \
+	MOVD  (TT)(R2<<3), R3  \
+	ADDW  R3, S, R4        \
+	LSRW  $16, R4, R4      \
+	LSR   R4, S, R5        \
+	LSL   R4, R5, R6       \
+	SUB   R6, S, R6        \
+	LSL   R9, R6, R6       \
+	ORR   R6, R8, R8       \
+	ADD   R4, R9, R9       \
+	ADD   R3->32, R5, R5   \
+	AND   $511, R5, R5     \
+	MOVHU (ST)(R5<<1), S
+
+// EFLUSH stores the 8 bytes of R8 and keeps the bits of a partial byte;
+// R9 is below 64.
+#define EFLUSH \
+	MOVD R8, (R1)      \
+	ADD  R9>>3, R1, R1 \
+	AND  $56, R9, R7   \
+	LSR  R7, R8, R8    \
+	AND  $7, R9, R9
+
+// EXTRA adds the extra bits of the length at loff in the sequence: the
+// length minus the base of its code, the byte at off of the packed codes,
+// from the info table at INFO.
+#define EXTRA(off, INFO, loff) \
+	MOVBU off(R14), R2       \
+	MOVD  (INFO)(R2<<3), R3  \
+	MOVWU loff(R13), R4      \
+	SUBW  R3, R4, R4         \
+	LSL   R9, R4, R4         \
+	ORR   R4, R8, R8         \
+	ADD   R3>>32, R9, R9
+
+// func encSeqsARM64(ctx *seqEncCtx)
+//
+// encSeqsARM64 is the loop of encodeSeqBits: it encodes sequences i down to
+// 0 into space the caller reserved, 12 bytes each.
+//
+// Registers: R1 output, R8 bits, R9 their count, R10/R11/R12 offset/match
+// length/literal length state, R13 sequence, R14 its packed codes, R15 the
+// first codes, R16 holds 1. R19-R21 and R22-R24 point at the tt and state
+// arrays of the offset, match length and literal length tables, R25 and R26
+// at llInfo and mlInfo. R2-R7 are scratch.
+TEXT ·encSeqsARM64(SB), NOSPLIT, $0-8
+	MOVD ctx+0(FP), R0
+	MOVD ES_OUT(R0), R1
+	MOVD ES_O(R0), R2
+	ADD  R2, R1, R1
+	MOVD ES_ACC(R0), R8
+	MOVD ES_NB(R0), R9
+	MOVD ES_OFS(R0), R10
+	MOVD ES_MLS(R0), R11
+	MOVD ES_LLS(R0), R12
+	MOVD ES_OFT(R0), R2
+	ADD  $FE_TT, R2, R19
+	ADD  $FE_STATE, R2, R22
+	MOVD ES_MLT(R0), R2
+	ADD  $FE_TT, R2, R20
+	ADD  $FE_STATE, R2, R23
+	MOVD ES_LLT(R0), R2
+	ADD  $FE_TT, R2, R21
+	ADD  $FE_STATE, R2, R24
+	MOVD ES_LLINFO(R0), R25
+	MOVD ES_MLINFO(R0), R26
+	MOVD $1, R16
+	MOVD ES_I(R0), R2
+	MOVD ES_SEQS(R0), R13
+	ADD  R2<<3, R13, R13
+	ADD  R2<<2, R13, R13
+	MOVD ES_CODES(R0), R15
+	ADD  R2<<2, R15, R14
+
+eloop:
+	ETRANS(2, R19, R22, R10)
+	ETRANS(1, R20, R23, R11)
+	ETRANS(0, R21, R24, R12)
+	EFLUSH
+	EXTRA(0, R25, 0)
+	EXTRA(1, R26, 4)
+
+	// the offset's extra bits are the offset value without its top bit;
+	// flush first if they would make the count 64 or more
+	MOVBU 2(R14), R2
+	ADD   R2, R9, R3
+	CMP   $64, R3
+	BLO   efits
+	EFLUSH
+
+efits:
+	MOVWU 8(R13), R3
+	LSL   R2, R16, R4
+	BIC   R4, R3, R3
+	LSL   R9, R3, R3
+	ORR   R3, R8, R8
+	ADD   R2, R9, R9
+	EFLUSH
+	SUB   $12, R13, R13
+	SUB   $4, R14, R14
+	CMP   R15, R14
+	BHS   eloop
+
+	MOVD ES_OUT(R0), R2
+	SUB  R2, R1, R1
+	MOVD R1, ES_O(R0)
+	MOVD R8, ES_ACC(R0)
+	MOVD R9, ES_NB(R0)
+	MOVD R12, ES_LLS(R0)
+	MOVD R11, ES_MLS(R0)
+	MOVD R10, ES_OFS(R0)
+	RET

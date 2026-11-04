@@ -571,7 +571,7 @@ func encodeSeqBits(out []byte, seqs []encSeq, codes []uint32, llT, mlT, ofT *fse
 			nb += lb
 			acc |= uint64(s.ml-uint32(mi)) << (nb & 63)
 			nb += mb
-			if nb+uint(oc) > 64 {
+			if nb+uint(oc) >= 64 {
 				store64(p, o, acc)
 				o += int(nb >> 3)
 				acc >>= nb &^ 7 & 63

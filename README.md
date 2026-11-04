@@ -300,18 +300,18 @@ Decoding, 21 runs:
 
 With `GOMAXPROCS=1`, `zstd.Decode` takes 40 to 62 ms on these files. That is between 0% and 13% slower than `DecodeAll`. klauspost/compress also decodes the sequences in arm64 assembly.
 
-Encoding from memory, 9 runs, with the ratio in parentheses. The "one CPU" column has 5 runs.
+Encoding from memory, 9 runs, with the ratio in parentheses. The "one CPU" column has 15 runs.
 
 | File | Level | klauspost `EncodeAll` | `zstd.Encode` | `zstd.Encode`, one CPU |
 |---|---|---|---|---|
-| Log | 1 | 193.6 (6.110) | 121.3 (6.153) | 213.8 |
-| Binaries | 1 | 126.4 (2.704) | 80.8 (2.745) | 145.4 |
-| Source | 1 | 133.8 (4.129) | 90.5 (4.341) | 153.1 |
-| Log | 3 | 235.5 (5.952) | 169.5 (6.075) | 265.1 |
-| Binaries | 3 | 153.6 (2.829) | 106.5 (2.827) | 179.2 |
-| Source | 3 | 153.9 (4.655) | 111.0 (4.717) | 176.9 |
+| Log | 1 | 193.6 (6.110) | 121.3 (6.153) | 210.6 |
+| Binaries | 1 | 126.4 (2.704) | 80.8 (2.745) | 140.8 |
+| Source | 1 | 133.8 (4.129) | 90.5 (4.341) | 146.3 |
+| Log | 3 | 235.5 (5.952) | 169.5 (6.075) | 262.7 |
+| Binaries | 3 | 153.6 (2.829) | 106.5 (2.827) | 173.0 |
+| Source | 3 | 153.9 (4.655) | 111.0 (4.717) | 167.7 |
 
-On one CPU, `zstd.Encode` takes 7% to 17% more time than `EncodeAll`. On arm64, the encoder uses Go without assembly.
+On one CPU, `zstd.Encode` takes 9% to 13% more time than `EncodeAll`.
 
 To measure your own `.zst` files, run the benchmark tool. It compares the zstd decoders and makes sure that they give the same output. With `-compress` and `-zstd`, it compresses the files at that level and makes sure that both decoders restore them.
 
@@ -349,7 +349,7 @@ go run . -compress 3 -zstd -n 9 /path/to/files/*
 ## Why zstd is fast
 
 - On amd64 with BMI2, assembly decodes the sequences and the four Huffman streams of the literals, executes the sequences, and encodes the sequences. BMI2 shifts take their count from any register. With `GOAMD64=v3` alone, the Go decoder was 15% faster, because the Go loops spent instructions to move shift counts.
-- On arm64, assembly decodes and executes the sequences. On one goroutine, one loop decodes each sequence and then copies it, so that the copies use the time while the decoder waits for its loads. With a loop for each step, a 100 MB log at level 1 took 18% more time on an M1 Pro.
+- On arm64, assembly decodes, executes and encodes the sequences. On one goroutine, one loop decodes each sequence and then copies it, so that the copies use the time while the decoder waits for its loads. With a loop for each step, a 100 MB log at level 1 took 18% more time on an M1 Pro.
 - The decoder decodes the sequences of a block into an array, then executes them. Each of the two loops keeps its state in registers.
 - Execution copies 16 bytes at a time. A match closer than 16 bytes starts with one `PSHUFB` that makes the pattern. The loop prefetches the source of the match eight sequences ahead.
 - A large frame decodes on two goroutines: one decodes the literals and the sequences, and the other executes them.

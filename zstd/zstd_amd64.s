@@ -581,11 +581,11 @@ eloop:
 	EXTRA(1, ES_MLINFO, 4)
 
 	// the offset's extra bits are the offset value without its top bit;
-	// flush first if they would not fit
+	// flush first if they would make the count 64 or more
 	MOVBQZX 2(R14), DX
 	LEAQ    (R9)(DX*1), AX
 	CMPQ    AX, $64
-	JBE     efits
+	JB      efits
 	EFLUSH
 
 efits:

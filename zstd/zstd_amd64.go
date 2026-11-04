@@ -78,22 +78,6 @@ func execSeqsSSE(ctx *execCtx)
 
 func execSeqs(ctx *execCtx) { execSeqsSSE(ctx) }
 
-// seqEncCtx carries encodeSeqBits' state into encSeqsBMI2. Its layout
-// matches the ES_ offsets in zstd_amd64.s.
-type seqEncCtx struct {
-	out    unsafe.Pointer
-	o      int
-	seqs   unsafe.Pointer
-	codes  unsafe.Pointer
-	i      int               // the sequence to encode next, counting down to 0
-	tabs   [3]unsafe.Pointer // literal length, match length, offset *fseEnc
-	states [3]uint64
-	acc    uint64
-	nb     uint64
-	llInfo unsafe.Pointer
-	mlInfo unsafe.Pointer
-}
-
 //go:noescape
 func encSeqsBMI2(ctx *seqEncCtx)
 
