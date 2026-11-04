@@ -466,3 +466,26 @@ func TestHeaderLikeStdlib(t *testing.T) {
 		}
 	}
 }
+
+// A small input buffer ends the input at many places in the block headers,
+// so dynamic hands over from lensFast to its byte-at-a-time loop at each of
+// them.
+func TestReaderSmallInput(t *testing.T) {
+	r := rand.New(rand.NewPCG(35, 36))
+	data := sampleData(r, 1<<20)
+	for _, lv := range []int{1, 6, 9} {
+		src := gzipBytes(t, data, lv)
+		for _, size := range []int{40, 64, 97} {
+			z := &Reader{}
+			z.d.inbuf = make([]byte, size)
+			z.d.out = make([]byte, 0, window+streamChunk+fastOutMargin)
+			if err := z.Reset(bytes.NewReader(src)); err != nil {
+				t.Fatal(err)
+			}
+			got, err := io.ReadAll(z)
+			if err != nil || !bytes.Equal(got, data) {
+				t.Fatalf("level %d, %d-byte input buffer: %d bytes, %v", lv, size, len(got), err)
+			}
+		}
+	}
+}

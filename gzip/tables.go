@@ -1,8 +1,10 @@
-// buildTable is a port of inftrees.c from zlib 1.2.12, altered to write
-// entries in the layout described below. zlib is Copyright (C) 1995-2022
-// Mark Adler; see NOTICE for its license.
+// buildTable follows build_decode_table from libdeflate, altered to write
+// entries in the layout described below. libdeflate is Copyright 2016, 2018
+// Eric Biggers; see NOTICE for its license.
 
 package gzip
+
+import "math/bits"
 
 // A table entry packs one decoding step into a uint32:
 //
@@ -43,13 +45,60 @@ var (
 	distExtra = [32]uint16{16, 16, 16, 16, 17, 17, 18, 18, 19, 19, 20, 20, 21, 21, 22, 22, 23, 23, 24, 24, 25, 25, 26, 26, 27, 27, 28, 28, 29, 29, 64, 64}
 )
 
-// buildTable is a port of zlib 1.2.12 inflate_table. It writes the table for
-// lens into table and returns the entries used and the root bits chosen.
-// errNoRoom means table is too small for this root size; the caller retries
-// with a smaller root.
+// symEntry[typ][sym] is the table entry of symbol sym without its code
+// length.
+var symEntry = func() (s [3][]uint32) {
+	baseEntry := func(op, base uint16) uint32 {
+		var n uint32
+		if op&opBase != 0 {
+			n = uint32(op & 15)
+		}
+		return makeEntry(n, uint32(op), uint32(base))
+	}
+	s[codeLens] = make([]uint32, 19)
+	for i := range s[codeLens] {
+		s[codeLens][i] = makeEntry(0, opLiteral, uint32(i))
+	}
+	s[codeLitLen] = make([]uint32, 288)
+	for i := range 256 {
+		s[codeLitLen][i] = makeEntry(0, opLiteral, uint32(i))
+	}
+	s[codeLitLen][256] = makeEntry(0, opEnd|opInvalid, 0)
+	for i := 257; i < 288; i++ {
+		s[codeLitLen][i] = baseEntry(lenExtra[i-257], lenBase[i-257])
+	}
+	s[codeDist] = make([]uint32, 32)
+	for i := range s[codeDist] {
+		s[codeDist][i] = baseEntry(distExtra[i], distBase[i])
+	}
+	return s
+}()
+
+// buildTable writes the table for lens into table and returns the entries
+// used and the root bits chosen. errNoRoom means table is too small for this
+// root size; the caller retries with a smaller root.
+//
+// It writes each code of root bits or fewer once, in the first 2^len entries,
+// and copies the filled part of the table to double it at each next length.
+// Each entry then repeats for every value of the bits after its code.
 func buildTable(typ codeType, lens []uint16, table []uint32, root uint, work []uint16) (used int, rootOut uint, err error) {
+	// Unused symbols come in long runs, and counting them one at a time
+	// makes each increment of count[0] wait for the one before it. A group
+	// of 4 unused symbols costs one increment, and the sort below skips it.
 	var count, offs [maxBits + 1]uint16
-	for _, l := range lens {
+	n4 := len(lens) &^ 3
+	for i := 0; i < n4; i += 4 {
+		q := lens[i : i+4 : i+4]
+		if q[0]|q[1]|q[2]|q[3] == 0 {
+			count[0] += 4
+			continue
+		}
+		count[q[0]]++
+		count[q[1]]++
+		count[q[2]]++
+		count[q[3]]++
+	}
+	for _, l := range lens[n4:] {
 		count[l]++
 	}
 
@@ -86,116 +135,105 @@ func buildTable(typ codeType, lens []uint16, table []uint32, root uint, work []u
 		return 0, 0, ErrCorrupt
 	}
 
-	for l := 1; l < maxBits; l++ {
+	// Sort the symbols by code length, the unused ones first. Testing each
+	// symbol for length 0 mispredicts when used and unused symbols mix, so
+	// only whole groups of 4 unused symbols are skipped.
+	for l := 0; l < maxBits; l++ {
 		offs[l+1] = offs[l] + count[l]
 	}
-	for sym, l := range lens {
-		if l != 0 {
-			work[offs[l]] = uint16(sym)
+	for i := 0; i < n4; i += 4 {
+		q := lens[i : i+4 : i+4]
+		if q[0]|q[1]|q[2]|q[3] == 0 {
+			continue
+		}
+		for j, l := range q {
+			work[offs[l]] = uint16(i + j)
 			offs[l]++
 		}
 	}
-
-	var base, extra []uint16
-	var match uint32
-	switch typ {
-	case codeLens:
-		match = 20
-	case codeLitLen:
-		base, extra, match = lenBase[:], lenExtra[:], 257
-	default:
-		base, extra, match = distBase[:], distExtra[:], 0
+	for sym := n4; sym < len(lens); sym++ {
+		l := lens[sym]
+		work[offs[l]] = uint16(sym)
+		offs[l]++
 	}
 
-	var (
-		huff uint32
-		sym  int
-		l    = min
-		next = 0
-		curr = root
-		drop uint
-		low  = ^uint32(0)
-	)
-	used = 1 << root
-	mask := uint32(used - 1)
-	if used > len(table) {
+	end := 1 << root
+	if end > len(table) {
 		return 0, 0, errNoRoom
 	}
+	ent := symEntry[typ]
+	if left > 0 {
+		// one code of one bit; the other bit value is invalid
+		table[0] = ent[work[count[0]]] + 1
+		table[1] = makeEntry(1, opInvalid, 0)
+		return 2, 1, nil
+	}
 
-	for {
-		var here uint32
-		s := uint32(work[sym])
-		switch {
-		case s+1 < match:
-			here = makeEntry(uint32(l-drop), opLiteral, s)
-		case s >= match:
-			op := uint32(extra[s-match])
-			bits := uint32(l - drop)
-			if op&opBase != 0 {
-				bits += op & 15
-			}
-			here = makeEntry(bits, op, uint32(base[s-match]))
-		default:
-			here = makeEntry(uint32(l-drop), opEnd|opInvalid, 0)
+	// code is the next codeword with its bits reversed, as the decoder reads
+	// them; appending zeros for a longer code leaves it unchanged
+	code, s := 0, int(count[0])
+	l := min
+	end = 1 << l
+	for ; l <= root; l++ {
+		if l > min {
+			copy(table[end:2*end], table[:end])
+			end <<= 1
 		}
-
-		incr := uint32(1) << (l - drop)
-		fill := uint32(1) << curr
-		minFill := fill
-		for {
-			fill -= incr
-			table[next+int(huff>>drop+fill)] = here
-			if fill == 0 {
-				break
-			}
-		}
-
-		incr = 1 << (l - 1)
-		for huff&incr != 0 {
-			incr >>= 1
-		}
-		if incr != 0 {
-			huff &= incr - 1
-			huff += incr
-		} else {
-			huff = 0
-		}
-
-		sym++
-		count[l]--
-		if count[l] == 0 {
-			if l == max {
-				break
-			}
-			l = uint(lens[work[sym]])
-		}
-
-		if l > root && huff&mask != low {
-			if drop == 0 {
-				drop = root
-			}
-			next += int(minFill)
-			curr = l - drop
-			left := 1 << curr
-			for curr+drop < max {
-				left -= int(count[curr+drop])
-				if left <= 0 {
-					break
+		for n := count[l]; n > 0; n-- {
+			table[code] = ent[work[s]] + uint32(l)
+			s++
+			if code == end-1 {
+				// all ones: the last code
+				for ; l < root; l++ {
+					copy(table[end:2*end], table[:end])
+					end <<= 1
 				}
-				curr++
-				left <<= 1
+				return end, root, nil
 			}
-			used += 1 << curr
-			if used > len(table) {
+			// increment the reversed code: set its highest 0 bit and clear
+			// the 1 bits above it
+			bit := 1 << (bits.Len(uint(code^(end-1))) - 1)
+			code = code&(bit-1) | bit
+		}
+	}
+
+	// longer codes go to sub-tables after the root table
+	for count[l] == 0 {
+		l++
+	}
+	n := count[l]
+	prefix, start := -1, 0
+	mask := 1<<root - 1
+	for {
+		if code&mask != prefix {
+			// as in zlib, the sub-table gets the fewest bits that the codes
+			// left, from this length on, fill
+			prefix, start = code&mask, end
+			sub := l - root
+			space := int(n)
+			for space < 1<<sub {
+				sub++
+				space = space<<1 + int(count[root+sub])
+			}
+			end = start + 1<<sub
+			if end > len(table) {
 				return 0, 0, errNoRoom
 			}
-			low = huff & mask
-			table[low] = makeEntry(uint32(root), uint32(curr), uint32(next))
+			table[prefix] = makeEntry(uint32(root), uint32(sub), uint32(start))
+		}
+		e := ent[work[s]] + uint32(l-root)
+		s++
+		for i := start + code>>root; i < end; i += 1 << (l - root) {
+			table[i] = e
+		}
+		last := 1<<l - 1
+		if code == last {
+			return end, root, nil
+		}
+		bit := 1 << (bits.Len(uint(code^last)) - 1)
+		code = code&(bit-1) | bit
+		for n--; n == 0; n = count[l] {
+			l++
 		}
 	}
-
-	if huff != 0 {
-		table[next+int(huff)] = makeEntry(uint32(l-drop), opInvalid, 0)
-	}
-	return used, root, nil
 }

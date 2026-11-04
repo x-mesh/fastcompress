@@ -163,30 +163,31 @@ These items apply to the `gzip` package.
 
 ### gzip decompression
 
-The table shows the median time of 11 runs in milliseconds. The machine is an Apple M1 Pro with macOS 27 and Go 1.27.3. Each decoder reads through a 1 MB `bufio.Reader` with 64 KB reads.
+The table shows the median time of 11 runs in milliseconds. The machine is an Apple M1 Pro with macOS 27 and Go 1.27.3. Each decoder reads through a 1 MB `bufio.Reader` with 64 KB reads. The files are a 100 MB synthetic application log, a 45 MB tar of Go binaries and a 61 MB tar of Go source, at gzip levels 1 and 6. The zstd section uses the same files.
 
 | File | Size | compress/gzip | klauspost v1.20.3 | fastcompress |
 |---|---|---|---|---|
-| Application log, `gzip -1` | 100 MB | 357 | 241 | 70.5 |
-| Binaries, level 6 | 16 MB | 64 | 44 | 17.6 |
-| Word list, level 1 | 2.5 MB | 14.4 | 9.9 | 3.4 |
-| Short repeated patterns, level 6 | 40 MB | 13.8 | 11.7 | 7.2 |
-| Byte runs, `Z_RLE` | 15 MB | 8.1 | 7.0 | 3.0 |
+| Log, level 1 | 100 MB | 310 | 223 | 67.5 |
+| Log, level 6 | 100 MB | 265 | 193 | 70.2 |
+| Binaries, level 1 | 45 MB | 252 | 178 | 62.7 |
+| Binaries, level 6 | 45 MB | 218 | 152 | 56.7 |
+| Source, level 1 | 61 MB | 222 | 156 | 51.1 |
+| Source, level 6 | 61 MB | 187 | 132 | 46.0 |
 
-For comparison, Apple's libz decodes the 100 MB log in 71.4 ms with one C `inflate` call. `Gunzip` decodes it in 68.7 ms. On Linux arm64 (Docker on the same Mac), the `Reader` time for the log is 70.9 ms. On the same machine, klauspost needs 244 ms, and Debian zlib 1.3.1 needs 193 ms through Python.
+For comparison, Apple's libz 1.2.12 decodes the log at level 1 in 66.1 ms with one C `inflate` call. `Gunzip` decodes it in 62.7 ms. On Linux arm64 (Docker on the same Mac), the `Reader` time for this file is 66.7 ms. On the same machine, klauspost needs 222 ms, and Debian zlib 1.3.1 needs 178 ms through Python.
 
-The next table is for amd64. The machine is an Intel Xeon Silver 4112 (4 cores, 8 threads) with Linux and Go 1.27.1. The table shows the median time of 11 runs in milliseconds, with the same `Reader` setup. The files are the files of the zstd section, at gzip levels 1 and 6. The "Go loop" column is fastcompress with `-tags purego`, which turns off the assembly.
+The next table is for amd64. The machine is an Intel Xeon Silver 4112 (4 cores, 8 threads) with Linux and Go 1.27.1. The table shows the median time of 11 runs in milliseconds, with the same `Reader` setup. The files are the files of the table above. The "Go loop" column is fastcompress with `-tags purego`, which turns off the assembly.
 
 | File | Size | compress/gzip | klauspost v1.20.3 | fastcompress, Go loop | fastcompress |
 |---|---|---|---|---|---|
-| Log, level 1 | 100 MB | 515 | 386 | 160.7 | 107.5 |
-| Log, level 6 | 100 MB | 493 | 334 | 155.3 | 124.7 |
-| Binaries, level 1 | 45 MB | 410 | 313 | 135.2 | 100.0 |
-| Binaries, level 6 | 45 MB | 368 | 267 | 118.0 | 91.8 |
-| Source, level 1 | 61 MB | 372 | 271 | 118.5 | 80.0 |
-| Source, level 6 | 61 MB | 306 | 225 | 102.9 | 75.6 |
+| Log, level 1 | 100 MB | 532 | 389 | 161.0 | 106.5 |
+| Log, level 6 | 100 MB | 480 | 335 | 148.0 | 115.3 |
+| Binaries, level 1 | 45 MB | 421 | 311 | 133.8 | 98.8 |
+| Binaries, level 6 | 45 MB | 361 | 270 | 114.9 | 86.9 |
+| Source, level 1 | 61 MB | 371 | 274 | 116.8 | 78.6 |
+| Source, level 6 | 61 MB | 304 | 227 | 99.4 | 72.8 |
 
-For comparison, libdeflate 1.19 decodes the log at level 1 in 95.4 ms with one C call. `Gunzip` decodes it in 108.8 ms, and in 161.6 ms without the assembly.
+For comparison, libdeflate 1.19 decodes the log at level 1 in 96.0 ms with one C call. `Gunzip` decodes it in 107.5 ms, and in 156.8 ms without the assembly.
 
 To measure your own files, run the benchmark tool. It also makes sure that all the decoders give the same output.
 
@@ -306,6 +307,8 @@ go run . -compress 3 -zstd -n 9 /path/to/files/*
 - A 64-bit bit buffer. One unaligned 8-byte load refills it, with no branch.
 - Each table entry holds the code length plus the extra bits. One shift removes a code and its extra bits.
 - Root tables of 10 and 7 bits, so fewer codes need a second table lookup. If the tables do not fit, the decoder uses 9 and 6 bits.
+- The decoder builds each table with the libdeflate method. It writes each code once, and one copy doubles the filled part of the table at each next code length. zlib writes each table entry separately. On the Xeon, the literal/length and distance tables of a block of the log at level 6 take 1.2 µs instead of 3.4 µs.
+- The code lengths in the header of a dynamic block come from 8-byte refills of the bit buffer, not from one byte at a time.
 - The table load for the next symbol starts before the refill, so the two delays overlap.
 - The decoder reads the next symbol before it copies a match.
 - The bit count uses the libdeflate method. The decoder subtracts the full entry and uses only the low 6 bits.
@@ -383,4 +386,4 @@ cd bench && go test .
 
 ## License
 
-MIT. The table builder in `gzip/tables.go` is a port of zlib 1.2.12. Parts of the zstd code follow Go's `internal/zstd` and the zstd library. [NOTICE](NOTICE) has their licenses.
+MIT. The table builder in `gzip/tables.go` follows libdeflate. The tests compare it with a port of the zlib 1.2.12 table builder. The CRC-32 combination in `gzip/crc32_combine.go` is a port of zlib. Parts of the zstd code follow Go's `internal/zstd` and the zstd library. [NOTICE](NOTICE) has their licenses.
