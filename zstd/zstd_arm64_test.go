@@ -57,7 +57,6 @@ func TestFusedMatchesGo(t *testing.T) {
 			lits[i] = byte(r.Uint32())
 		}
 		n := 1 + r.IntN(min(len(src)/2, zstdBlockMax/3))
-		end := hist + 1 + r.IntN(room)
 
 		restore := decodeAsmOff()
 		d.rep = [3]uint{1, 4, 8}
@@ -65,6 +64,14 @@ func TestFusedMatchesGo(t *testing.T) {
 		derr := d.decodeSeqs(seqs, src, 0, len(src))
 		wrep := d.rep
 		restore()
+		end := hist + 1 + r.IntN(room)
+		// the Go loops execute the last sequences and the literals after
+		// them, so a third of the blocks end at the last byte of the
+		// output or one byte before it
+		size := blockOut(seqs, len(lits))
+		if k%3 == 0 && size > 1 && size <= room {
+			end = hist + size - r.IntN(2)
+		}
 		stop := failAt(seqs, len(lits), hist, end, d.x.window)
 
 		var s seqState
@@ -84,7 +91,10 @@ func TestFusedMatchesGo(t *testing.T) {
 			t.Fatalf("case %d: the output before position %d differs", k, stop-hist)
 		}
 		if xerr != nil {
-			if gerr == nil {
+			// random bits also fail the check at the end of the stream,
+			// so the length of the output shows where the fused loop
+			// stopped
+			if gerr == nil || len(got) == size {
 				t.Fatalf("case %d: fused accepts what execBlock refuses at %d", k, stop-hist)
 			}
 			continue
@@ -98,6 +108,20 @@ func TestFusedMatchesGo(t *testing.T) {
 	if copied < 100 {
 		t.Errorf("only %d of the cases copied every sequence", copied)
 	}
+}
+
+// blockOut returns the number of bytes that seqs and nlits literals write,
+// or -1 if the sequences take more literals than there are.
+func blockOut(seqs []seqVal, nlits int) int {
+	n := 0
+	for _, sq := range seqs {
+		n += int(sq.ll) + int(sq.ml)
+		nlits -= int(sq.ll)
+	}
+	if nlits < 0 {
+		return -1
+	}
+	return n + nlits
 }
 
 // failAt returns the output position of the first sequence that execBlock
