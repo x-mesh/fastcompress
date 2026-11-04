@@ -1,7 +1,7 @@
-fastgzip contains code ported from zlib 1.2.12 and altered:
+fastcompress contains code ported from zlib 1.2.12 and altered:
 
-  tables.go        from inftrees.c (inflate_table)
-  crc32_combine.go from crc32.c (crc32_combine, multmodp, x2nmodp)
+  gzip/tables.go        from inftrees.c (inflate_table)
+  gzip/crc32_combine.go from crc32.c (crc32_combine, multmodp, x2nmodp)
 
 zlib carries this license:
 
@@ -23,11 +23,11 @@ zlib carries this license:
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 
-fastgzip contains code that follows Go's internal/zstd package and is
+fastcompress contains code that follows Go's internal/zstd package and is
 altered:
 
-  zstd_fse.go      readNCount and buildFSE, from fse.go
-  zstd_huf.go      the Huffman tree description, from huff.go
+  zstd/zstd_fse.go  readNCount and buildFSE, from fse.go
+  zstd/zstd_huf.go  the Huffman tree description, from huff.go
 
 Go carries this license:
 
@@ -59,16 +59,16 @@ Go carries this license:
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-fastgzip contains code that follows the zstd library and is altered:
+fastcompress contains code that follows the zstd library and is altered:
 
-  zstd_enc_entropy.go  normalizeCounts, normalizeM2, writeNCount,
-                       optimalTableLog, fseEnc and fseWeights, from
-                       FSE_normalizeCount, FSE_normalizeM2,
-                       FSE_writeNCount, FSE_optimalTableLog,
-                       FSE_buildCTable, FSE_initCState2, FSE_encodeSymbol
-                       and FSE_compress_usingCTable
-  zstd_enc.go          the order of encodeSeqBits, from
-                       ZSTD_encodeSequences
+  zstd/zstd_enc_entropy.go  normalizeCounts, normalizeM2, writeNCount,
+                            optimalTableLog, fseEnc and fseWeights, from
+                            FSE_normalizeCount, FSE_normalizeM2,
+                            FSE_writeNCount, FSE_optimalTableLog,
+                            FSE_buildCTable, FSE_initCState2, FSE_encodeSymbol
+                            and FSE_compress_usingCTable
+  zstd/zstd_enc.go          the order of encodeSeqBits, from
+                            ZSTD_encodeSequences
 
 zstd carries this license:
 

@@ -12,7 +12,7 @@ import (
 
 	kgzip "github.com/klauspost/compress/gzip"
 
-	"github.com/x-mesh/fastgzip"
+	fgzip "github.com/x-mesh/fastcompress/gzip"
 )
 
 type compressor struct {
@@ -39,14 +39,14 @@ func writerCompress(newWriter func(io.Writer, int) (io.WriteCloser, error)) func
 var compressors = []compressor{
 	{"std", writerCompress(func(w io.Writer, l int) (io.WriteCloser, error) { return gzip.NewWriterLevel(w, l) })},
 	{"klauspost", writerCompress(func(w io.Writer, l int) (io.WriteCloser, error) { return kgzip.NewWriterLevel(w, l) })},
-	{"fastgzip", fastgzip.Gzip},
-	{"fastgzip-w", writerCompress(func(w io.Writer, l int) (io.WriteCloser, error) { return fastgzip.NewWriterLevel(w, l) })},
-	{"fastgzip-p", func(src []byte, l int) ([]byte, error) { return fastgzip.GzipConcurrent(src, l, 0) }},
+	{"fastcompress", fgzip.Gzip},
+	{"fastcompress-w", writerCompress(func(w io.Writer, l int) (io.WriteCloser, error) { return fgzip.NewWriterLevel(w, l) })},
+	{"fastcompress-p", func(src []byte, l int) ([]byte, error) { return fgzip.GzipConcurrent(src, l, 0) }},
 }
 
 // benchCompress prints the median time in ms and the compressed size in
-// percent of the input for each file and compressor. fastgzip-w writes all
-// the input to a fastgzip.Writer at once. fastgzip-p is GzipConcurrent on
+// percent of the input for each file and compressor. fastcompress-w writes all
+// the input to a fastcompress gzip.Writer at once. fastcompress-p is GzipConcurrent on
 // GOMAXPROCS goroutines. It checks every output with
 // compress/gzip.
 func benchCompress(files []string, level, runs int, only string) {
