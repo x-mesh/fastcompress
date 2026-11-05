@@ -311,7 +311,7 @@ Encoding from memory, 9 runs, with the ratio in parentheses. The "one CPU" colum
 | Binaries | 3 | 157.1 (2.829) | 110.4 (2.827) | 164.2 |
 | Source | 3 | 160.3 (4.655) | 115.1 (4.717) | 165.6 |
 
-On one CPU, `zstd.Encode` takes between 2% less and 5% more time than `EncodeAll`.
+On one CPU, `zstd.Encode` takes between 1.6% less and 4.5% more time than `EncodeAll`.
 
 To measure your own `.zst` files, run the benchmark tool. It compares the zstd decoders and makes sure that they give the same output. With `-compress` and `-zstd`, it compresses the files at that level and makes sure that both decoders restore them.
 
