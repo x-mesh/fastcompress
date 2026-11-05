@@ -147,7 +147,7 @@ return w.Close()
 
 The decoders skip skippable frames. They do not support dictionaries. A `zstd.Reader` refuses a window larger than 128 MB, as the zstd library does by default. A bad magic number gives `zstd.ErrHeader`, a bad content checksum gives `zstd.ErrChecksum`, and other bad data gives `zstd.ErrCorrupt`.
 
-With more than one CPU, the zstd code uses a second goroutine for 1 MB of data or more. `zstd.Reader` uses a third goroutine, and `zstd.Writer` always uses a second goroutine. This makes one call faster, but it uses more CPU time. Set `GOMAXPROCS=1` to use one goroutine. A write error of the writer under a `zstd.Writer` shows at the next `Flush` or `Close`.
+With more than one CPU, the zstd code uses a second goroutine for 1 MB of data or more. `zstd.Reader`, and `zstd.Decode` on arm64, use a third goroutine. `zstd.Writer` always uses a second goroutine. This makes one call faster, but it uses more CPU time. Set `GOMAXPROCS=1` to use one goroutine. A write error of the writer under a `zstd.Writer` shows at the next `Flush` or `Close`.
 
 ## Differences from compress/gzip
 
@@ -288,15 +288,15 @@ Decoding, 21 runs:
 
 | File | Level | klauspost `DecodeAll` | `zstd.Decode` | klauspost `Decoder` | `zstd.Reader` |
 |---|---|---|---|---|---|
-| Log | 1 | 60.1 | 50.7 | 35.2 | 34.8 |
-| Log | 3 | 58.9 | 48.9 | 36.2 | 38.7 |
-| Log | 19 | 46.1 | 31.8 | 30.0 | 27.7 |
-| Binaries | 1 | 39.0 | 34.6 | 21.6 | 22.3 |
-| Binaries | 3 | 39.9 | 36.2 | 25.0 | 25.6 |
-| Binaries | 19 | 46.6 | 41.0 | 36.3 | 33.7 |
-| Source | 1 | 39.9 | 34.4 | 24.3 | 24.3 |
-| Source | 3 | 40.7 | 34.7 | 27.4 | 28.4 |
-| Source | 19 | 43.2 | 36.7 | 36.0 | 34.1 |
+| Log | 1 | 60.4 | 35.9 | 35.2 | 34.8 |
+| Log | 3 | 58.3 | 39.7 | 36.2 | 38.7 |
+| Log | 19 | 46.6 | 23.7 | 30.0 | 27.7 |
+| Binaries | 1 | 39.1 | 22.1 | 21.6 | 22.3 |
+| Binaries | 3 | 40.2 | 25.9 | 25.0 | 25.6 |
+| Binaries | 19 | 47.2 | 33.6 | 36.3 | 33.7 |
+| Source | 1 | 40.2 | 24.4 | 24.3 | 24.3 |
+| Source | 3 | 40.9 | 28.7 | 27.4 | 28.4 |
+| Source | 19 | 44.2 | 34.1 | 36.0 | 34.1 |
 
 With `GOMAXPROCS=1`, `zstd.Decode` takes 40 to 62 ms on these files. That is between 0% and 13% slower than `DecodeAll`. `zstd.Reader` takes 41 to 64 ms. That is between 1% and 5% slower than the klauspost `Decoder`. klauspost/compress also decodes the sequences in arm64 assembly.
 
@@ -352,7 +352,7 @@ go run . -compress 3 -zstd -n 9 /path/to/files/*
 - On arm64, assembly decodes, executes and encodes the sequences. On one goroutine, one loop decodes each sequence and then copies it, so that the copies use the time while the decoder waits for its loads. With a loop for each step, a 100 MB log at level 1 took 18% more time on an M1 Pro.
 - The decoder decodes the sequences of a block into an array, then executes them. Each of the two loops keeps its state in registers.
 - Execution copies 16 bytes at a time. A match closer than 16 bytes starts with one `PSHUFB` that makes the pattern. The loop prefetches the source of the match eight sequences ahead.
-- A large frame decodes on two goroutines: one decodes the literals and the sequences, and the other executes them.
+- A large frame decodes on two goroutines: one decodes the literals and the sequences, and the other executes them. On arm64, a third goroutine decodes the literals. On an M1 Pro, this made `zstd.Decode` 8% to 37% faster. On a Xeon, it made a log at level 3 13% slower, so amd64 keeps two goroutines.
 - Each hash table entry of the encoder keeps the first 4 bytes at its position. A candidate that does not match costs no load from the input.
 - The fast level checks the last offset two bytes ahead. Both levels encode a match at one of the last three offsets as a repeat offset.
 - The encoder chooses the predefined, the previous or a new FSE table by its estimated size.

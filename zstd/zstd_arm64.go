@@ -32,6 +32,12 @@ func encSeqsARM64(ctx *seqEncCtx)
 
 func encodeSeqsAsm(ctx *seqEncCtx) { encSeqsARM64(ctx) }
 
+// On an M1 Pro, decoding the sequences of a block takes about as long as
+// executing them, and the literals wait behind both on one goroutine. A
+// third goroutine for the literals made Decode 8-37% faster with the
+// default GOMAXPROCS, for 2% more CPU time.
+const splitLits = true
+
 // Decoding a sequence waits on a chain of loads and shifts, and copying it
 // waits on memory. In one loop the two overlap: on one goroutine of an M1
 // Pro, a 100 MB log at level 1 decoded in 15% less time than with two loops.

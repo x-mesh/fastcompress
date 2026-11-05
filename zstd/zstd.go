@@ -257,8 +257,8 @@ func (x *zexec) end(sum []byte) error {
 }
 
 // Frames that decode to at least pipeMinSize bytes (or, without a declared
-// size, have that much input / 4) decode on two goroutines. Tests lower it
-// to run the pipeline on small inputs.
+// size, have that much input / 4) decode on more than one goroutine. Tests
+// lower it to run the pipeline on small inputs.
 var pipeMinSize = 1 << 20
 
 const pipeDepth = 4
@@ -496,7 +496,8 @@ func (d *zdec) blocks(out, src []byte, h *frameHeader) ([]byte, int, error) {
 // goroutine decodes the literals and sequences of the next blocks while
 // this one executes the current block and hashes its output. In a
 // prototype built on klauspost/compress, this split cut the decode time of
-// a 100 MB log by 40% for 15% more CPU.
+// a 100 MB log by 40% for 15% more CPU. With splitLits, a third goroutine
+// decodes the literals, as in a Reader.
 func (d *zdec) blocksPipelined(out, src []byte, h *frameHeader) ([]byte, int, error) {
 	if d.free == nil {
 		d.free = make(chan *zbuf, pipeDepth+2)
@@ -506,17 +507,36 @@ func (d *zdec) blocksPipelined(out, src []byte, h *frameHeader) ([]byte, int, er
 	}
 	free := d.free
 	ch := make(chan zitem, pipeDepth)
+	lits := ch
 	var stop atomic.Bool
+	if splitLits {
+		// the two parsing goroutines share d: the literals use d.huf,
+		// the sequences d.seq and d.rep
+		lits = make(chan zitem, pipeDepth)
+		go func() {
+			defer close(ch)
+			for it := range lits {
+				d.parseSeqs(&it)
+				if it.err != nil {
+					stop.Store(true)
+				}
+				ch <- it
+			}
+		}()
+	}
 	go func() {
-		defer close(ch)
+		defer close(lits)
 		i := 0
 		for !stop.Load() {
 			zb := <-free
-			it := d.parse(src, i, zb)
+			it := d.parseLits(src, i, zb)
+			if !splitLits {
+				d.parseSeqs(&it)
+			}
 			if it.buf == nil {
 				free <- zb
 			}
-			ch <- it
+			lits <- it
 			if it.err != nil || it.last {
 				return
 			}
