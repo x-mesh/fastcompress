@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"math/bits"
 	"slices"
+	"unsafe"
 )
 
 // zbitWriter writes a forward bitstream, least significant bit first, as the
@@ -337,7 +338,7 @@ func (e *fseEnc) flushState(w *zbitWriter, state uint32) {
 // bits, assigned canonically as hufTable.build decodes them.
 type hufEnc struct {
 	nb     [256]uint8
-	code   [256]uint16
+	enc    [256]uint32 // code | nb << 16, one load per symbol
 	maxSym int
 	log    uint
 }
@@ -419,7 +420,7 @@ func (h *hufEnc) build(counts *[256]uint32, maxSym int) {
 			continue
 		}
 		w := log + 1 - int(h.nb[s])
-		h.code[s] = uint16(start[w] >> (w - 1))
+		h.enc[s] = start[w]>>(w-1) | uint32(h.nb[s])<<16
 		start[w] += 1 << (w - 1)
 	}
 	h.log = uint(log)
@@ -552,28 +553,51 @@ func fseWeights(out []byte, w []uint8) []byte {
 }
 
 // encode1 writes src as one Huffman stream, last symbol first.
+//
+// It writes through an unsafe pointer into reserved capacity: a symbol takes
+// at most maxHufLog bits, and each store writes 8 bytes. Appending 8 bytes
+// for every 4 symbols made literals of the binaries 3 times slower to
+// encode than in klauspost/compress.
 func (h *hufEnc) encode1(out []byte, src []byte) []byte {
-	w := zbitWriter{out: out}
+	if need := len(out) + len(src)*maxHufLog/8 + 16; cap(out) < need {
+		out = append(out[:cap(out)], make([]byte, need-cap(out))...)[:len(out)]
+	}
+	p := unsafe.Pointer(unsafe.SliceData(out))
+	o := len(out)
+	sp := unsafe.Pointer(unsafe.SliceData(src))
+	var acc uint64
+	var nb uint
 	i := len(src)
 	for ; i&3 != 0; i-- {
-		s := src[i-1]
-		w.add(uint64(h.code[s]), uint(h.nb[s]))
+		e := h.enc[*(*byte)(unsafe.Add(sp, i-1))]
+		acc |= uint64(e&0xffff) << (nb & 63)
+		nb += uint(e >> 16)
 	}
-	w.flush()
 	// 4 codes of at most 11 bits fit with the at most 7 bits left over
 	for ; i > 0; i -= 4 {
-		s := src[i-1]
-		w.add(uint64(h.code[s]), uint(h.nb[s]))
-		s = src[i-2]
-		w.add(uint64(h.code[s]), uint(h.nb[s]))
-		s = src[i-3]
-		w.add(uint64(h.code[s]), uint(h.nb[s]))
-		s = src[i-4]
-		w.add(uint64(h.code[s]), uint(h.nb[s]))
-		w.flush()
+		store64(p, o, acc)
+		o += int(nb >> 3)
+		acc >>= nb &^ 7 & 63
+		nb &= 7
+		e := h.enc[*(*byte)(unsafe.Add(sp, i-1))]
+		acc |= uint64(e&0xffff) << (nb & 63)
+		nb += uint(e >> 16)
+		e = h.enc[*(*byte)(unsafe.Add(sp, i-2))]
+		acc |= uint64(e&0xffff) << (nb & 63)
+		nb += uint(e >> 16)
+		e = h.enc[*(*byte)(unsafe.Add(sp, i-3))]
+		acc |= uint64(e&0xffff) << (nb & 63)
+		nb += uint(e >> 16)
+		e = h.enc[*(*byte)(unsafe.Add(sp, i-4))]
+		acc |= uint64(e&0xffff) << (nb & 63)
+		nb += uint(e >> 16)
 	}
-	w.close()
-	return w.out
+	// the end mark, then the bytes with any bit in them
+	acc |= 1 << (nb & 63)
+	nb++
+	store64(p, o, acc)
+	o += int(nb+7) >> 3
+	return out[:o]
 }
 
 // encode4 writes src as four Huffman streams after their jump table. ok is
