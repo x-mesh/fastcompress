@@ -352,7 +352,7 @@ go run . -compress 3 -zstd -n 9 /path/to/files/*
 - On arm64, assembly decodes, executes and encodes the sequences. On one goroutine, one loop decodes each sequence and then copies it, so that the copies use the time while the decoder waits for its loads. With a loop for each step, a 100 MB log at level 1 took 18% more time on an M1 Pro.
 - The decoder decodes the sequences of a block into an array, then executes them. Each of the two loops keeps its state in registers.
 - Execution copies 16 bytes at a time. A match closer than 16 bytes starts with one `PSHUFB` that makes the pattern. The loop prefetches the source of the match eight sequences ahead.
-- A large frame decodes on two goroutines: one decodes the literals and the sequences, and the other executes them. On arm64, a third goroutine decodes the literals. On an M1 Pro, this made `zstd.Decode` 8% to 37% faster. On a Xeon, it made a log at level 3 13% slower, so amd64 keeps two goroutines.
+- A large frame decodes on two goroutines: one decodes the literals and the sequences, and the other executes them. On arm64, `zstd.Decode` uses three goroutines, as `zstd.Reader` does: one for the literals, one for the sequences, and one that executes them. On an M1 Pro, this made `zstd.Decode` 8% to 37% faster. On a Xeon, it made a log at level 3 13% slower, so amd64 keeps two goroutines.
 - Each hash table entry of the encoder keeps the first 4 bytes at its position. A candidate that does not match costs no load from the input.
 - The fast level checks the last offset two bytes ahead. Both levels encode a match at one of the last three offsets as a repeat offset.
 - The encoder chooses the predefined, the previous or a new FSE table by its estimated size.
