@@ -229,7 +229,19 @@ For small inputs, the table shows the time of one `Gzip` call in microseconds, a
 
 At level 6, the hash tables of fastcompress have 768 KB, and small inputs use them less efficiently.
 
-We did not measure gzip compression on arm64.
+On arm64, we used the Apple M1 Pro with macOS 27 and Go 1.27.3, and the files of the gzip decompression table. Each value is the median of 5 runs. At levels 1, 6 and 9, fastcompress needs 8-32% less time than klauspost. On 10 goroutines, `GzipConcurrent` needs 6.2-7.4 times less time than `Gzip`. A `Writer` that gets all the data in one `Write` needs up to 4% more time than `Gzip`.
+
+| File | Level | compress/gzip | klauspost v1.20.3 | fastcompress | fastcompress, 10 goroutines |
+|---|---|---|---|---|---|
+| Log | 1 | 271 (18.17%) | 234 (18.17%) | 158 (17.83%) | 24 (17.83%) |
+| Binaries | 1 | 234 (40.92%) | 197 (40.92%) | 149 (40.03%) | 22 (40.03%) |
+| Source | 1 | 214 (27.68%) | 184 (27.68%) | 141 (26.32%) | 23 (26.31%) |
+| Log | 6 | 545 (15.95%) | 456 (15.95%) | 396 (16.23%) | 56 (16.22%) |
+| Binaries | 6 | 446 (36.40%) | 380 (36.40%) | 351 (36.17%) | 51 (36.18%) |
+| Source | 6 | 412 (23.10%) | 346 (23.10%) | 299 (23.06%) | 43 (23.06%) |
+| Log | 9 | 2391 (14.66%) | 2117 (14.66%) | 1837 (14.83%) | 250 (14.83%) |
+| Binaries | 9 | 3862 (35.52%) | 3013 (35.52%) | 2171 (35.38%) | 320 (35.38%) |
+| Source | 9 | 3219 (22.38%) | 2718 (22.38%) | 2316 (22.28%) | 374 (22.28%) |
 
 To measure compression, give the uncompressed files and a level to the benchmark tool. It decodes each output with `compress/gzip` and compares it with the input.
 
