@@ -264,23 +264,23 @@ Encoding from memory, 9 runs, with the ratio in parentheses. `klauspost/compress
 
 | File | Level | klauspost `EncodeAll` | `zstd.Encode` | `zstd.Encode`, one CPU |
 |---|---|---|---|---|
-| Log | 1 | 426.0 (6.110) | 237.6 (6.153) | 346.4 |
-| Binaries | 1 | 265.8 (2.704) | 147.9 (2.745) | 232.2 |
-| Source | 1 | 275.1 (4.129) | 168.8 (4.341) | 244.4 |
-| Log | 3 | 569.1 (5.952) | 421.0 (6.075) | 535.9 |
-| Binaries | 3 | 368.2 (2.829) | 277.4 (2.827) | 363.8 |
-| Source | 3 | 360.9 (4.655) | 260.6 (4.717) | 337.4 |
+| Log | 1 | 458.6 (6.110) | 260.9 (6.153) | 373.7 |
+| Binaries | 1 | 336.6 (2.704) | 192.6 (2.745) | 269.5 |
+| Source | 1 | 308.7 (4.129) | 182.0 (4.341) | 248.9 |
+| Log | 3 | 616.8 (5.952) | 442.1 (6.075) | 555.0 |
+| Binaries | 3 | 419.5 (2.829) | 337.7 (2.827) | 397.8 |
+| Source | 3 | 386.6 (4.655) | 273.1 (4.717) | 347.9 |
 
 Encoding a stream with 64 KB writes, 7 runs. The ratios are the same as above. The `klauspost/compress` `Encoder` has its default concurrency.
 
 | File | Level | klauspost `Encoder` | `zstd.Writer` |
 |---|---|---|---|
-| Log | 1 | 339.3 | 284.2 |
-| Binaries | 1 | 217.0 | 168.1 |
-| Source | 1 | 288.7 | 190.1 |
-| Log | 3 | 503.1 | 467.6 |
-| Binaries | 3 | 307.8 | 290.5 |
-| Source | 3 | 329.4 | 296.7 |
+| Log | 1 | 404.8 | 275.8 |
+| Binaries | 1 | 254.2 | 187.4 |
+| Source | 1 | 314.8 | 182.3 |
+| Log | 3 | 547.2 | 473.7 |
+| Binaries | 3 | 339.7 | 315.3 |
+| Source | 3 | 358.8 | 306.9 |
 
 The next tables are for arm64. The machine is an Apple M1 Pro with macOS 27 and Go 1.27.3. The files and the setup are the same as above. Other programs also ran on the machine, so a time can vary by about 5%.
 
@@ -304,14 +304,14 @@ Encoding from memory, 9 runs, with the ratio in parentheses. The "one CPU" colum
 
 | File | Level | klauspost `EncodeAll` | `zstd.Encode` | `zstd.Encode`, one CPU |
 |---|---|---|---|---|
-| Log | 1 | 193.6 (6.110) | 121.3 (6.153) | 210.6 |
-| Binaries | 1 | 126.4 (2.704) | 80.8 (2.745) | 140.8 |
-| Source | 1 | 133.8 (4.129) | 90.5 (4.341) | 146.3 |
-| Log | 3 | 235.5 (5.952) | 169.5 (6.075) | 262.7 |
-| Binaries | 3 | 153.6 (2.829) | 106.5 (2.827) | 173.0 |
-| Source | 3 | 153.9 (4.655) | 111.0 (4.717) | 167.7 |
+| Log | 1 | 199.3 (6.110) | 121.9 (6.153) | 197.4 |
+| Binaries | 1 | 132.9 (2.704) | 77.0 (2.745) | 130.8 |
+| Source | 1 | 136.8 (4.129) | 87.3 (4.341) | 139.6 |
+| Log | 3 | 241.5 (5.952) | 172.5 (6.075) | 247.1 |
+| Binaries | 3 | 157.1 (2.829) | 110.4 (2.827) | 164.2 |
+| Source | 3 | 160.3 (4.655) | 115.1 (4.717) | 165.6 |
 
-On one CPU, `zstd.Encode` takes 9% to 13% more time than `EncodeAll`.
+On one CPU, `zstd.Encode` takes between 1.6% less and 4.5% more time than `EncodeAll`.
 
 To measure your own `.zst` files, run the benchmark tool. It compares the zstd decoders and makes sure that they give the same output. With `-compress` and `-zstd`, it compresses the files at that level and makes sure that both decoders restore them.
 
@@ -356,6 +356,7 @@ go run . -compress 3 -zstd -n 9 /path/to/files/*
 - Each hash table entry of the encoder keeps the first 4 bytes at its position. A candidate that does not match costs no load from the input.
 - The fast level checks the last offset two bytes ahead. Both levels encode a match at one of the last three offsets as a repeat offset.
 - The encoder chooses the predefined, the previous or a new FSE table by its estimated size.
+- The Huffman encoder writes 8 bytes after each 4 symbols, into space that it reserves for the stream. On an M1 Pro, this cut the time to encode the literals of the binaries at level 3 from 32 ms to 8 ms.
 - A large input compresses on two goroutines: one finds the matches, and the other encodes them.
 
 ## Safety
