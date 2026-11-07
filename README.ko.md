@@ -356,7 +356,7 @@ go run . -compress 3 -zstd -n 9 /path/to/files/*
 
 압축에서 `compress/gzip`과 `klauspost/compress/gzip`은 스트림 하나에 goroutine 하나를 씁니다. `GzipConcurrent`와 `Writer.SetConcurrency`는 입력을 청크로 나눠 여러 goroutine에서 압축하며, 출력 크기는 `Gzip`의 출력과 거의 같습니다.
 
-klauspost의 zstd 코드도 amd64에는 BMI2 어셈블리, arm64에는 시퀀스 어셈블리가 있습니다. 블록의 시퀀스를 모두 해석한 뒤 실행하는 구조도 같습니다. 차이는 [zstd가 빠른 이유](#zstd가-빠른-이유)에 적은 세부 구현과 goroutine 사용에 있습니다. 데이터가 1 MB 이상이면 `zstd.Decode`와 `zstd.Encode`는 프레임 하나를 여러 goroutine으로 처리합니다. klauspost의 `DecodeAll`과 `EncodeAll`은 goroutine 하나를 씁니다.
+klauspost의 zstd 코드도 amd64에는 BMI2 어셈블리, arm64에는 시퀀스 어셈블리가 있습니다. 블록의 시퀀스를 모두 해석한 뒤 실행하는 구조도 같습니다. 차이는 [zstd가 빠른 이유](#zstd가-빠른-이유)에 적은 세부 구현과 goroutine 사용에 있습니다. CPU가 둘 이상이면 `zstd.Decode`와 `zstd.Encode`는 1 MB 이상인 프레임 하나를 여러 goroutine으로 처리합니다. klauspost의 `DecodeAll`과 `EncodeAll`은 goroutine 하나를 씁니다.
 
 ### 압축 방식
 

@@ -357,7 +357,7 @@ The flat buffer of `Reader` holds the last 32 KB of output plus up to 1 MB of ne
 
 For compression, `compress/gzip` and `klauspost/compress/gzip` use one goroutine for a stream. `GzipConcurrent` and `Writer.SetConcurrency` split the input into chunks and compress them on more than one goroutine. The output size stays approximately the same as the output of `Gzip`.
 
-The zstd code of klauspost also has BMI2 assembly on amd64 and sequence assembly on arm64. It also decodes the sequences of a block before it executes them. The differences are in smaller details, which [Why zstd is fast](#why-zstd-is-fast) lists, and in goroutines. For 1 MB of data or more, `zstd.Decode` and `zstd.Encode` use more than one goroutine for one frame. The klauspost `DecodeAll` and `EncodeAll` use one goroutine.
+The zstd code of klauspost also has BMI2 assembly on amd64 and sequence assembly on arm64. It also decodes the sequences of a block before it executes them. The differences are in smaller details, which [Why zstd is fast](#why-zstd-is-fast) lists, and in goroutines. With more than one CPU, `zstd.Decode` and `zstd.Encode` use more than one goroutine for one frame of 1 MB or more. The klauspost `DecodeAll` and `EncodeAll` use one goroutine.
 
 ### How it compresses
 
