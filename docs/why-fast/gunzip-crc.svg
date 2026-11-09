@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="294" viewBox="0 0 880 294" role="img" aria-labelledby="title desc"><title id="title">Compute CRC-32 on a second goroutine</title><desc id="desc">compress/gzip decodes and computes CRC-32 on the same goroutine. Above 1 MB, Gunzip gives the output to a second goroutine in steps of 1 MB or more, and that goroutine computes the CRC-32 while the decoder continues.</desc><style>text{font-family:system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;font-size:13px}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.b{font-weight:600}.h{font-size:16px;font-weight:600}.s12{font-size:12px}.s11{font-size:11px}.grow{transform-box:fill-box;transform-origin:left center}
+.bg{fill:#ffffff;stroke:#d1d9e0}
+.t{fill:#1f2328}
+.m{fill:#59636e}
+.ln{stroke:#818b98;fill:none}
+.lnf{fill:#818b98}
+.cell{fill:#f6f8fa;stroke:#818b98}
+.f-old{fill:#6e7781}
+.f-new{fill:#0969da}
+.f-code{fill:#9a6700}
+.f-extra{fill:#8250df}
+.f-lit{fill:#1a7f37}
+.f-seq{fill:#bc4c00}
+.f-soft{fill:#ddf4ff;stroke:#0969da}
+.s-new{stroke:#0969da;fill:none}
+.s-code{stroke:#9a6700;fill:none}
+.on{fill:#ffffff}
+.cur{stroke:#1f2328}
+@media (prefers-color-scheme:dark){
+.bg{fill:#0d1117;stroke:#3d444d}
+.t{fill:#f0f6fc}
+.m{fill:#9198a1}
+.ln{stroke:#656c76;fill:none}
+.lnf{fill:#656c76}
+.cell{fill:#151b23;stroke:#656c76}
+.f-old{fill:#8d96a0}
+.f-new{fill:#4493f8}
+.f-code{fill:#d29922}
+.f-extra{fill:#ab7df8}
+.f-lit{fill:#3fb950}
+.f-seq{fill:#f0883e}
+.f-soft{fill:#0c2d6b;stroke:#4493f8}
+.s-new{stroke:#4493f8;fill:none}
+.s-code{stroke:#d29922;fill:none}
+.on{fill:#0d1117}
+.cur{stroke:#f0f6fc}
+}@keyframes k1{0%,0.00%{opacity:1;transform:scaleX(0)}18.31%,93.98%{opacity:1;transform:scaleX(1)}97.59%,100%{opacity:0}}
+@keyframes k2{0%,18.31%{opacity:0}20.12%,93.98%{opacity:1}97.59%,100%{opacity:0}}
+@keyframes k3{0%,18.31%{opacity:1;transform:scaleX(0)}22.89%,93.98%{opacity:1;transform:scaleX(1)}97.59%,100%{opacity:0}}
+@keyframes k4{0%,22.89%{opacity:0}24.70%,93.98%{opacity:1}97.59%,100%{opacity:0}}
+@keyframes k5{0%,22.89%{opacity:1;transform:scaleX(0)}41.20%,93.98%{opacity:1;transform:scaleX(1)}97.59%,100%{opacity:0}}
+@keyframes k6{0%,41.20%{opacity:0}43.01%,93.98%{opacity:1}97.59%,100%{opacity:0}}
+@keyframes k7{0%,41.20%{opacity:1;transform:scaleX(0)}45.78%,93.98%{opacity:1;transform:scaleX(1)}97.59%,100%{opacity:0}}
+@keyframes k8{0%,45.78%{opacity:0}47.59%,93.98%{opacity:1}97.59%,100%{opacity:0}}
+@keyframes k9{0%,45.78%{opacity:1;transform:scaleX(0)}64.10%,93.98%{opacity:1;transform:scaleX(1)}97.59%,100%{opacity:0}}
+@keyframes k10{0%,64.10%{opacity:0}65.90%,93.98%{opacity:1}97.59%,100%{opacity:0}}
+@keyframes k11{0%,64.10%{opacity:1;transform:scaleX(0)}68.67%,93.98%{opacity:1;transform:scaleX(1)}97.59%,100%{opacity:0}}
+@keyframes k12{0%,68.67%{opacity:0}70.48%,93.98%{opacity:1}97.59%,100%{opacity:0}}
+@keyframes k13{0%,68.67%{opacity:0}71.08%,93.98%{opacity:1}97.59%,100%{opacity:0}}
+@keyframes k14{0%,0.00%{opacity:1;transform:scaleX(0)}18.31%,93.98%{opacity:1;transform:scaleX(1)}97.59%,100%{opacity:0}}
+@keyframes k15{0%,18.31%{opacity:0}20.12%,93.98%{opacity:1}97.59%,100%{opacity:0}}
+@keyframes k16{0%,18.31%{opacity:1;transform:scaleX(0)}36.63%,93.98%{opacity:1;transform:scaleX(1)}97.59%,100%{opacity:0}}
+@keyframes k17{0%,36.63%{opacity:0}38.43%,93.98%{opacity:1}97.59%,100%{opacity:0}}
+@keyframes k18{0%,36.63%{opacity:1;transform:scaleX(0)}54.94%,93.98%{opacity:1;transform:scaleX(1)}97.59%,100%{opacity:0}}
+@keyframes k19{0%,54.94%{opacity:0}56.75%,93.98%{opacity:1}97.59%,100%{opacity:0}}
+@keyframes k20{0%,18.31%{opacity:1;transform:scaleX(0)}22.89%,93.98%{opacity:1;transform:scaleX(1)}97.59%,100%{opacity:0}}
+@keyframes k21{0%,22.89%{opacity:0}24.70%,93.98%{opacity:1}97.59%,100%{opacity:0}}
+@keyframes k22{0%,36.63%{opacity:1;transform:scaleX(0)}41.20%,93.98%{opacity:1;transform:scaleX(1)}97.59%,100%{opacity:0}}
+@keyframes k23{0%,41.20%{opacity:0}43.01%,93.98%{opacity:1}97.59%,100%{opacity:0}}
+@keyframes k24{0%,54.94%{opacity:1;transform:scaleX(0)}59.52%,93.98%{opacity:1;transform:scaleX(1)}97.59%,100%{opacity:0}}
+@keyframes k25{0%,59.52%{opacity:0}61.33%,93.98%{opacity:1}97.59%,100%{opacity:0}}
+@keyframes k26{0%,59.52%{opacity:0}61.93%,93.98%{opacity:1}97.59%,100%{opacity:0}}
+@keyframes k27{0%{transform:translateX(0);opacity:1}68.67%{transform:translateX(450px);opacity:1}93.98%{transform:translateX(450px);opacity:1}97.59%,100%{transform:translateX(450px);opacity:0}}@media (prefers-reduced-motion:reduce){*{animation:none!important}}</style><rect class="bg" x="0.5" y="0.5" width="879" height="293" rx="12"/><text class="t h" x="28" y="40">Compute CRC-32 on a second goroutine</text><text class="t b" x="28" y="84">compress/gzip, klauspost</text><text class="m s12" x="222.39999999999998" y="84">one goroutine</text><text class="m s12" x="44" y="113">goroutine 1</text><rect class="cell" x="300" y="96" width="450" height="26" rx="4" opacity=".6"/><rect class="f-old grow" style="animation:k1 8.3s linear infinite;" x="301" y="97" width="118" height="24" rx="3"/><text class="on s12" style="animation:k2 8.3s linear infinite;" x="360.0" y="113" text-anchor="middle">decode</text><rect class="f-extra grow" style="animation:k3 8.3s linear infinite;" x="421" y="97" width="28" height="24" rx="3"/><text class="on s12" style="animation:k4 8.3s linear infinite;" x="435.0" y="113" text-anchor="middle">CRC</text><rect class="f-old grow" style="animation:k5 8.3s linear infinite;" x="451" y="97" width="118" height="24" rx="3"/><text class="on s12" style="animation:k6 8.3s linear infinite;" x="510.0" y="113" text-anchor="middle">decode</text><rect class="f-extra grow" style="animation:k7 8.3s linear infinite;" x="571" y="97" width="28" height="24" rx="3"/><text class="on s12" style="animation:k8 8.3s linear infinite;" x="585.0" y="113" text-anchor="middle">CRC</text><rect class="f-old grow" style="animation:k9 8.3s linear infinite;" x="601" y="97" width="118" height="24" rx="3"/><text class="on s12" style="animation:k10 8.3s linear infinite;" x="660.0" y="113" text-anchor="middle">decode</text><rect class="f-extra grow" style="animation:k11 8.3s linear infinite;" x="721" y="97" width="28" height="24" rx="3"/><text class="on s12" style="animation:k12 8.3s linear infinite;" x="735.0" y="113" text-anchor="middle">CRC</text><path class="ln" style="animation:k13 8.3s linear infinite;" d="M750 92V126" stroke-width="2"/><text class="t b" x="28" y="162">fastcompress Gunzip</text><text class="m s12" x="184.4" y="162">output above 1 MB</text><text class="m s12" x="44" y="191">goroutine 1</text><rect class="cell" x="300" y="174" width="450" height="26" rx="4" opacity=".6"/><rect class="f-new grow" style="animation:k14 8.3s linear infinite;" x="301" y="175" width="118" height="24" rx="3"/><text class="on s12" style="animation:k15 8.3s linear infinite;" x="360.0" y="191" text-anchor="middle">decode ≥1 MB</text><rect class="f-new grow" style="animation:k16 8.3s linear infinite;" x="421" y="175" width="118" height="24" rx="3"/><text class="on s12" style="animation:k17 8.3s linear infinite;" x="480.0" y="191" text-anchor="middle">decode ≥1 MB</text><rect class="f-new grow" style="animation:k18 8.3s linear infinite;" x="541" y="175" width="118" height="24" rx="3"/><text class="on s12" style="animation:k19 8.3s linear infinite;" x="600.0" y="191" text-anchor="middle">decode ≥1 MB</text><text class="m s12" x="44" y="225">goroutine 2</text><rect class="cell" x="300" y="208" width="450" height="26" rx="4" opacity=".6"/><rect class="f-extra grow" style="animation:k20 8.3s linear infinite;" x="421" y="209" width="28" height="24" rx="3"/><text class="on s12" style="animation:k21 8.3s linear infinite;" x="435.0" y="225" text-anchor="middle">CRC</text><rect class="f-extra grow" style="animation:k22 8.3s linear infinite;" x="541" y="209" width="28" height="24" rx="3"/><text class="on s12" style="animation:k23 8.3s linear infinite;" x="555.0" y="225" text-anchor="middle">CRC</text><rect class="f-extra grow" style="animation:k24 8.3s linear infinite;" x="661" y="209" width="28" height="24" rx="3"/><text class="on s12" style="animation:k25 8.3s linear infinite;" x="675.0" y="225" text-anchor="middle">CRC</text><path class="ln" style="animation:k26 8.3s linear infinite;" d="M690 170V238" stroke-width="2"/><path class="cur" style="opacity:0;animation:k27 8.3s linear infinite;" d="M300 70V242" stroke-width="1" stroke-dasharray="3 3"/><text class="m s12" x="28" y="274">The lengths of the bars are an example, not a measurement.</text></svg>

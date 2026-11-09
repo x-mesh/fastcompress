@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="396" viewBox="0 0 880 396" role="img" aria-labelledby="title desc"><title id="title">Compress chunks on more than one goroutine</title><desc id="desc">compress/gzip compresses a stream on one goroutine. GzipConcurrent splits the input into chunks of 16 blocks. Each goroutine first puts the 32 KB before its chunk in the hash tables, compresses the chunk and computes its CRC-32. crc32_combine joins the checksums.</desc><style>text{font-family:system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;font-size:13px}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.b{font-weight:600}.h{font-size:16px;font-weight:600}.s12{font-size:12px}.s11{font-size:11px}.grow{transform-box:fill-box;transform-origin:left center}
+.bg{fill:#ffffff;stroke:#d1d9e0}
+.t{fill:#1f2328}
+.m{fill:#59636e}
+.ln{stroke:#818b98;fill:none}
+.lnf{fill:#818b98}
+.cell{fill:#f6f8fa;stroke:#818b98}
+.f-old{fill:#6e7781}
+.f-new{fill:#0969da}
+.f-code{fill:#9a6700}
+.f-extra{fill:#8250df}
+.f-lit{fill:#1a7f37}
+.f-seq{fill:#bc4c00}
+.f-soft{fill:#ddf4ff;stroke:#0969da}
+.s-new{stroke:#0969da;fill:none}
+.s-code{stroke:#9a6700;fill:none}
+.on{fill:#ffffff}
+.cur{stroke:#1f2328}
+@media (prefers-color-scheme:dark){
+.bg{fill:#0d1117;stroke:#3d444d}
+.t{fill:#f0f6fc}
+.m{fill:#9198a1}
+.ln{stroke:#656c76;fill:none}
+.lnf{fill:#656c76}
+.cell{fill:#151b23;stroke:#656c76}
+.f-old{fill:#8d96a0}
+.f-new{fill:#4493f8}
+.f-code{fill:#d29922}
+.f-extra{fill:#ab7df8}
+.f-lit{fill:#3fb950}
+.f-seq{fill:#f0883e}
+.f-soft{fill:#0c2d6b;stroke:#4493f8}
+.s-new{stroke:#4493f8;fill:none}
+.s-code{stroke:#d29922;fill:none}
+.on{fill:#0d1117}
+.cur{stroke:#f0f6fc}
+}@keyframes k1{0%,0.00%{opacity:1;transform:scaleX(0)}17.51%,94.24%{opacity:1;transform:scaleX(1)}97.70%,100%{opacity:0}}
+@keyframes k2{0%,17.51%{opacity:0}19.24%,94.24%{opacity:1}97.70%,100%{opacity:0}}
+@keyframes k3{0%,17.51%{opacity:1;transform:scaleX(0)}35.02%,94.24%{opacity:1;transform:scaleX(1)}97.70%,100%{opacity:0}}
+@keyframes k4{0%,35.02%{opacity:0}36.75%,94.24%{opacity:1}97.70%,100%{opacity:0}}
+@keyframes k5{0%,35.02%{opacity:1;transform:scaleX(0)}52.53%,94.24%{opacity:1;transform:scaleX(1)}97.70%,100%{opacity:0}}
+@keyframes k6{0%,52.53%{opacity:0}54.26%,94.24%{opacity:1}97.70%,100%{opacity:0}}
+@keyframes k7{0%,52.53%{opacity:1;transform:scaleX(0)}70.05%,94.24%{opacity:1;transform:scaleX(1)}97.70%,100%{opacity:0}}
+@keyframes k8{0%,70.05%{opacity:0}71.77%,94.24%{opacity:1}97.70%,100%{opacity:0}}
+@keyframes k9{0%,70.05%{opacity:0}72.35%,94.24%{opacity:1}97.70%,100%{opacity:0}}
+@keyframes k10{0%,0.00%{opacity:1;transform:scaleX(0)}2.63%,94.24%{opacity:1;transform:scaleX(1)}97.70%,100%{opacity:0}}
+@keyframes k11{0%,2.63%{opacity:0}4.35%,94.24%{opacity:1}97.70%,100%{opacity:0}}
+@keyframes k12{0%,2.63%{opacity:1;transform:scaleX(0)}20.14%,94.24%{opacity:1;transform:scaleX(1)}97.70%,100%{opacity:0}}
+@keyframes k13{0%,20.14%{opacity:0}21.87%,94.24%{opacity:1}97.70%,100%{opacity:0}}
+@keyframes k14{0%,0.00%{opacity:1;transform:scaleX(0)}2.63%,94.24%{opacity:1;transform:scaleX(1)}97.70%,100%{opacity:0}}
+@keyframes k15{0%,2.63%{opacity:0}4.35%,94.24%{opacity:1}97.70%,100%{opacity:0}}
+@keyframes k16{0%,2.63%{opacity:1;transform:scaleX(0)}20.14%,94.24%{opacity:1;transform:scaleX(1)}97.70%,100%{opacity:0}}
+@keyframes k17{0%,20.14%{opacity:0}21.87%,94.24%{opacity:1}97.70%,100%{opacity:0}}
+@keyframes k18{0%,0.00%{opacity:1;transform:scaleX(0)}2.63%,94.24%{opacity:1;transform:scaleX(1)}97.70%,100%{opacity:0}}
+@keyframes k19{0%,2.63%{opacity:0}4.35%,94.24%{opacity:1}97.70%,100%{opacity:0}}
+@keyframes k20{0%,2.63%{opacity:1;transform:scaleX(0)}20.14%,94.24%{opacity:1;transform:scaleX(1)}97.70%,100%{opacity:0}}
+@keyframes k21{0%,20.14%{opacity:0}21.87%,94.24%{opacity:1}97.70%,100%{opacity:0}}
+@keyframes k22{0%,0.00%{opacity:1;transform:scaleX(0)}2.63%,94.24%{opacity:1;transform:scaleX(1)}97.70%,100%{opacity:0}}
+@keyframes k23{0%,2.63%{opacity:0}4.35%,94.24%{opacity:1}97.70%,100%{opacity:0}}
+@keyframes k24{0%,2.63%{opacity:1;transform:scaleX(0)}20.14%,94.24%{opacity:1;transform:scaleX(1)}97.70%,100%{opacity:0}}
+@keyframes k25{0%,20.14%{opacity:0}21.87%,94.24%{opacity:1}97.70%,100%{opacity:0}}
+@keyframes k26{0%,20.14%{opacity:1;transform:scaleX(0)}24.52%,94.24%{opacity:1;transform:scaleX(1)}97.70%,100%{opacity:0}}
+@keyframes k27{0%,24.52%{opacity:0}26.24%,94.24%{opacity:1}97.70%,100%{opacity:0}}
+@keyframes k28{0%,24.52%{opacity:0}26.82%,94.24%{opacity:1}97.70%,100%{opacity:0}}
+@keyframes k29{0%{transform:translateX(0);opacity:1}70.05%{transform:translateX(480px);opacity:1}94.24%{transform:translateX(480px);opacity:1}97.70%,100%{transform:translateX(480px);opacity:0}}@media (prefers-reduced-motion:reduce){*{animation:none!important}}</style><rect class="bg" x="0.5" y="0.5" width="879" height="395" rx="12"/><text class="t h" x="28" y="40">Compress chunks on more than one goroutine</text><rect class="f-new" x="707.0" y="28" width="14" height="14" rx="3"/><text class="m s12" x="727.0" y="40">compress + CRC-32</text><rect class="f-code" x="527.0" y="28" width="14" height="14" rx="3"/><text class="m s12" x="547.0" y="40">32 KB before the chunk</text><text class="t b" x="28" y="84">compress/gzip, klauspost</text><text class="m s12" x="222.39999999999998" y="84">one goroutine</text><text class="m s12" x="44" y="113">goroutine 1</text><rect class="cell" x="300" y="96" width="480" height="26" rx="4" opacity=".6"/><rect class="f-old grow" style="animation:k1 8.68s linear infinite;" x="301" y="97" width="118" height="24" rx="3"/><text class="on s12" style="animation:k2 8.68s linear infinite;" x="360.0" y="113" text-anchor="middle">chunk 1</text><rect class="f-old grow" style="animation:k3 8.68s linear infinite;" x="421" y="97" width="118" height="24" rx="3"/><text class="on s12" style="animation:k4 8.68s linear infinite;" x="480.0" y="113" text-anchor="middle">chunk 2</text><rect class="f-old grow" style="animation:k5 8.68s linear infinite;" x="541" y="97" width="118" height="24" rx="3"/><text class="on s12" style="animation:k6 8.68s linear infinite;" x="600.0" y="113" text-anchor="middle">chunk 3</text><rect class="f-old grow" style="animation:k7 8.68s linear infinite;" x="661" y="97" width="118" height="24" rx="3"/><text class="on s12" style="animation:k8 8.68s linear infinite;" x="720.0" y="113" text-anchor="middle">chunk 4</text><path class="ln" style="animation:k9 8.68s linear infinite;" d="M780 92V126" stroke-width="2"/><text class="t b" x="28" y="162">fastcompress GzipConcurrent</text><text class="m s12" x="245.2" y="162">chunks of 16 blocks</text><text class="m s12" x="44" y="191">goroutine 1</text><rect class="cell" x="300" y="174" width="480" height="26" rx="4" opacity=".6"/><rect class="f-code grow" style="animation:k10 8.68s linear infinite;" x="301" y="175" width="16.0" height="24" rx="3"/><rect class="f-new grow" style="animation:k12 8.68s linear infinite;" x="319.0" y="175" width="118" height="24" rx="3"/><text class="on s12" style="animation:k13 8.68s linear infinite;" x="378.0" y="191" text-anchor="middle">chunk 1</text><text class="m s12" x="44" y="225">goroutine 2</text><rect class="cell" x="300" y="208" width="480" height="26" rx="4" opacity=".6"/><rect class="f-code grow" style="animation:k14 8.68s linear infinite;" x="301" y="209" width="16.0" height="24" rx="3"/><rect class="f-new grow" style="animation:k16 8.68s linear infinite;" x="319.0" y="209" width="118" height="24" rx="3"/><text class="on s12" style="animation:k17 8.68s linear infinite;" x="378.0" y="225" text-anchor="middle">chunk 2</text><text class="m s12" x="44" y="259">goroutine 3</text><rect class="cell" x="300" y="242" width="480" height="26" rx="4" opacity=".6"/><rect class="f-code grow" style="animation:k18 8.68s linear infinite;" x="301" y="243" width="16.0" height="24" rx="3"/><rect class="f-new grow" style="animation:k20 8.68s linear infinite;" x="319.0" y="243" width="118" height="24" rx="3"/><text class="on s12" style="animation:k21 8.68s linear infinite;" x="378.0" y="259" text-anchor="middle">chunk 3</text><text class="m s12" x="44" y="293">goroutine 4</text><rect class="cell" x="300" y="276" width="480" height="26" rx="4" opacity=".6"/><rect class="f-code grow" style="animation:k22 8.68s linear infinite;" x="301" y="277" width="16.0" height="24" rx="3"/><rect class="f-new grow" style="animation:k24 8.68s linear infinite;" x="319.0" y="277" width="118" height="24" rx="3"/><text class="on s12" style="animation:k25 8.68s linear infinite;" x="378.0" y="293" text-anchor="middle">chunk 4</text><text class="m s12" x="44" y="327">join</text><rect class="cell" x="300" y="310" width="480" height="26" rx="4" opacity=".6"/><rect class="f-extra grow" style="animation:k26 8.68s linear infinite;" x="439.0" y="311" width="28" height="24" rx="3"/><text class="t s12 mono" style="animation:k27 8.68s linear infinite;" x="476.0" y="327">crc32_combine</text><path class="ln" style="animation:k28 8.68s linear infinite;" d="M468.0 170V340" stroke-width="2"/><path class="cur" style="opacity:0;animation:k29 8.68s linear infinite;" d="M300 70V344" stroke-width="1" stroke-dasharray="3 3"/><text class="m s12" x="28" y="376">The number of goroutines and the lengths of the bars are an example.</text></svg>
