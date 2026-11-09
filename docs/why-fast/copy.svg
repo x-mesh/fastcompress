@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="330" viewBox="0 0 880 330" role="img" aria-labelledby="title desc"><title id="title">Copy a match</title><desc id="desc">compress/gzip and klauspost copy a match into a 32 KB ring buffer with copy calls, and a match can wrap at the end. fastcompress keeps the last 32 KB plus up to 1 MB of new output in a flat buffer, copies 16 bytes at a time, and a match never wraps.</desc><style>text{font-family:system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;font-size:13px}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.b{font-weight:600}.h{font-size:16px;font-weight:600}.s12{font-size:12px}.s11{font-size:11px}.grow{transform-box:fill-box;transform-origin:left center}
+.bg{fill:#ffffff;stroke:#d1d9e0}
+.t{fill:#1f2328}
+.m{fill:#59636e}
+.ln{stroke:#818b98;fill:none}
+.lnf{fill:#818b98}
+.cell{fill:#f6f8fa;stroke:#818b98}
+.f-old{fill:#6e7781}
+.f-new{fill:#0969da}
+.f-code{fill:#9a6700}
+.f-extra{fill:#8250df}
+.f-lit{fill:#1a7f37}
+.f-seq{fill:#bc4c00}
+.f-soft{fill:#ddf4ff;stroke:#0969da}
+.s-new{stroke:#0969da;fill:none}
+.s-code{stroke:#9a6700;fill:none}
+.on{fill:#ffffff}
+.cur{stroke:#1f2328}
+@media (prefers-color-scheme:dark){
+.bg{fill:#0d1117;stroke:#3d444d}
+.t{fill:#f0f6fc}
+.m{fill:#9198a1}
+.ln{stroke:#656c76;fill:none}
+.lnf{fill:#656c76}
+.cell{fill:#151b23;stroke:#656c76}
+.f-old{fill:#8d96a0}
+.f-new{fill:#4493f8}
+.f-code{fill:#d29922}
+.f-extra{fill:#ab7df8}
+.f-lit{fill:#3fb950}
+.f-seq{fill:#f0883e}
+.f-soft{fill:#0c2d6b;stroke:#4493f8}
+.s-new{stroke:#4493f8;fill:none}
+.s-code{stroke:#d29922;fill:none}
+.on{fill:#0d1117}
+.cur{stroke:#f0f6fc}
+}@keyframes k1{0%,11.43%{opacity:0;transform:scaleX(0)}20.00%,92.86%{opacity:1;transform:scaleX(1)}97.14%,100%{opacity:0}}
+@keyframes k2{0%,37.14%{opacity:0;transform:scaleX(0)}42.86%,92.86%{opacity:1;transform:scaleX(1)}97.14%,100%{opacity:0}}
+@keyframes k3{0%,11.43%{opacity:0}15.71%,92.86%{opacity:1}97.14%,100%{opacity:0}}
+@keyframes k4{0%,28.57%{opacity:0}34.29%,92.86%{opacity:1}97.14%,100%{opacity:0}}
+@keyframes k5{0%,37.14%{opacity:0}41.43%,92.86%{opacity:1}97.14%,100%{opacity:0}}
+@keyframes k6{0%,11.43%{opacity:0}13.14%,92.86%{opacity:1}97.14%,100%{opacity:0}}
+@keyframes k7{0%,14.57%{opacity:0}16.29%,92.86%{opacity:1}97.14%,100%{opacity:0}}
+@keyframes k8{0%,17.71%{opacity:0}19.43%,92.86%{opacity:1}97.14%,100%{opacity:0}}
+@keyframes k9{0%,20.86%{opacity:0}22.57%,92.86%{opacity:1}97.14%,100%{opacity:0}}
+@keyframes k10{0%,24.00%{opacity:0}25.71%,92.86%{opacity:1}97.14%,100%{opacity:0}}
+@keyframes k11{0%,11.43%{opacity:0}14.29%,92.86%{opacity:1}97.14%,100%{opacity:0}}
+@keyframes k12{0%,31.43%{opacity:0}35.71%,92.86%{opacity:1}97.14%,100%{opacity:0}}@media (prefers-reduced-motion:reduce){*{animation:none!important}}</style><rect class="bg" x="0.5" y="0.5" width="879" height="329" rx="12"/><text class="t h" x="28" y="40">Copy a match</text><rect class="f-code" x="640" y="28" width="14" height="14" rx="3"/><text class="m s12" x="660" y="40">source</text><rect class="f-extra" x="720" y="28" width="14" height="14" rx="3"/><text class="m s12" x="740" y="40">copied match</text><text class="t b" x="28" y="96">compress/gzip, klauspost</text><text class="m" x="28" y="116">32 KB ring buffer, copy calls</text><rect class="cell" x="300" y="84" width="540" height="34" rx="4"/><rect class="f-old" x="300" y="84" width="470" height="34" rx="4" opacity=".35"/><rect class="f-code" x="640" y="84" width="100" height="34"/><rect class="f-extra grow" style="animation:k1 7.0s linear infinite;" x="770" y="84" width="70" height="34"/><rect class="f-extra grow" style="animation:k2 7.0s linear infinite;" x="300" y="84" width="30" height="34"/><text class="t s12" x="805.0" y="136" text-anchor="middle" style="animation:k3 7.0s linear infinite;">copy 1</text><path class="ln" style="animation:k4 7.0s linear infinite;" d="M836 80C800 54 360 54 314 78" stroke-dasharray="4 4"/><path class="lnf" style="animation:k4 7.0s linear infinite;" d="M310 80l2 -10l7 7z"/><text class="m s12" x="570.0" y="74" text-anchor="middle" style="animation:k4 7.0s linear infinite;">end of the buffer: wrap to the start</text><text class="t s12" x="315" y="136" text-anchor="middle" style="animation:k5 7.0s linear infinite;">copy 2</text><text class="t b" x="28" y="226">fastcompress</text><text class="m" x="28" y="246">flat buffer, 16 bytes at a time</text><rect class="f-old" x="300" y="214" width="140" height="34" rx="4" opacity=".35"/><rect class="f-soft" x="440" y="214" width="400" height="34" rx="4"/><text class="m s12" x="370.0" y="266" text-anchor="middle">last 32 KB</text><text class="m s12" x="700.0" y="266" text-anchor="middle">new output, up to 1 MB</text><rect class="f-new" x="440" y="214" width="160" height="34" opacity=".35"/><rect class="f-code" x="490" y="214" width="100" height="34"/><rect class="f-extra" style="animation:k6 7.0s linear infinite;" x="600" y="214" width="19" height="34"/><rect class="f-extra" style="animation:k7 7.0s linear infinite;" x="620" y="214" width="19" height="34"/><rect class="f-extra" style="animation:k8 7.0s linear infinite;" x="640" y="214" width="19" height="34"/><rect class="f-extra" style="animation:k9 7.0s linear infinite;" x="660" y="214" width="19" height="34"/><rect class="f-extra" style="animation:k10 7.0s linear infinite;" x="680" y="214" width="19" height="34"/><path class="ln" style="animation:k11 7.0s linear infinite;" d="M600 208v-6h19v6"/><text class="t s12" style="animation:k11 7.0s linear infinite;" x="610" y="196" text-anchor="middle">16 B</text><text class="t s12" style="animation:k12 7.0s linear infinite;" x="712" y="236">a match never wraps</text></svg>

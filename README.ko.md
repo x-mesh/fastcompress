@@ -2,6 +2,8 @@
 
 [English](README.md) | 한국어
 
+![세 해제기가 Apple M1 Pro에서 gzip 레벨 1로 압축한 100 MB 로그의 같은 줄을 출력합니다. fastcompress는 67.5 ms, klauspost는 223 ms, compress/gzip은 310 ms가 걸립니다.](docs/why-fast/overview.svg)
+
 fastcompress는 gzip, DEFLATE, zstd 데이터를 cgo 없이 Go로 압축하고 해제합니다. Apple M1 Pro에서 100 MB 로그를 `klauspost/compress/gzip`보다 약 3.3배 빠르게 해제하며, 이 속도는 macOS 시스템 zlib과 같은 수준입니다. Intel Xeon에서 측정한 모든 파일에서 zstd 해제와 압축이 `klauspost/compress/zstd`보다 빨랐습니다.
 
 `compress/gzip`, `klauspost/compress`와 코드가 어떻게 다른지는 [fastcompress가 빠른 이유](#fastcompress가-빠른-이유)에 정리했습니다.
@@ -354,6 +356,14 @@ go run . -compress 3 -zstd -n 9 /path/to/files/*
 
 `Reader`의 평평한 버퍼는 마지막 출력 32 KB와 최대 1 MB의 새 출력을 담습니다. 그래서 매치가 버퍼 끝을 넘어 처음으로 되돌아가지 않습니다. `Gunzip`은 결과 슬라이스에 바로 해제합니다.
 
+![compress/gzip과 klauspost는 32비트 버퍼를 1바이트씩 채우고, fastcompress는 64비트 버퍼를 8바이트 로드 한 번으로 채웁니다.](docs/why-fast/refill.svg)
+
+![compress/gzip과 klauspost는 코드를 시프트한 뒤 추가 비트를 다시 읽어 시프트하고, fastcompress는 코드와 추가 비트를 시프트 한 번으로 제거합니다.](docs/why-fast/shift.svg)
+
+![compress/gzip과 klauspost는 매치를 링 버퍼에 복사해 버퍼 끝에서 되돌아갈 수 있고, fastcompress는 평평한 버퍼에 16바이트씩 복사해 되돌아가지 않습니다.](docs/why-fast/copy.svg)
+
+세 그림은 위 표의 단계를 보여 줍니다. 비트와 바이트 수는 예시입니다.
+
 압축에서 `compress/gzip`과 `klauspost/compress/gzip`은 스트림 하나에 goroutine 하나를 씁니다. `GzipConcurrent`와 `Writer.SetConcurrency`는 입력을 청크로 나눠 여러 goroutine에서 압축하며, 출력 크기는 `Gzip`의 출력과 거의 같습니다.
 
 klauspost의 zstd 코드도 amd64에는 BMI2 어셈블리, arm64에는 시퀀스 어셈블리가 있습니다. 블록의 시퀀스를 모두 해석한 뒤 실행하는 구조도 같습니다. 차이는 [zstd가 빠른 이유](#zstd가-빠른-이유)에 적은 세부 구현과 goroutine 사용에 있습니다. CPU가 둘 이상이면 `zstd.Decode`와 `zstd.Encode`는 1 MB 이상인 프레임 하나를 여러 goroutine으로 처리합니다. klauspost의 `DecodeAll`과 `EncodeAll`은 goroutine 하나를 씁니다.
@@ -367,6 +377,8 @@ klauspost의 zstd 코드도 amd64에는 BMI2 어셈블리, arm64에는 시퀀스
 - Huffman 코드 길이는 Moffat-Katajainen 방법으로 구합니다. 길이가 15비트를 넘으면 package-merge 방법을 씁니다.
 - 병렬 압축에서는 goroutine마다 16블록 크기의 청크를 맡깁니다. 인코더는 먼저 청크 앞의 32 KB를 해시 테이블에 넣고, 청크 끝에 빈 stored 블록을 붙여 바이트 경계를 맞춥니다. 각 goroutine은 맡은 청크의 CRC-32도 계산하며, zlib `crc32_combine`을 옮긴 코드가 체크섬을 합칩니다.
 - 새 스트림을 시작해도 해시 테이블을 지우지 않습니다. 테이블은 위치에 기준값을 더해 저장하고, 인코더는 기준값을 이전 항목 전체보다 뒤로 옮깁니다. 테이블이 최대 768 KB라서, 1 KB 입력에서는 테이블을 지우는 데 시간 대부분이 들었습니다.
+
+![compress/gzip은 모든 청크를 goroutine 하나에서 압축하고, GzipConcurrent는 청크마다 goroutine을 따로 쓰며 crc32_combine으로 체크섬을 합칩니다.](docs/why-fast/gzip-concurrent.svg)
 
 ### 해제가 빠른 이유
 
@@ -383,6 +395,8 @@ klauspost의 zstd 코드도 amd64에는 BMI2 어셈블리, arm64에는 시퀀스
 - arm64에서는 어셈블리 함수가 `PMULL` carry-less 곱셈으로 CRC-32를 계산합니다. 128비트 레인 8개를 병렬로 접으며, 속도는 45 GB/s로 `hash/crc32`의 8.4 GB/s보다 빠릅니다.
 - 1 MB를 넘으면 `Gunzip`은 CRC-32를 두 번째 goroutine에서 계산합니다. 넘길 때마다 goroutine을 깨울 수 있으므로, 해제기는 출력을 1 MB 이상씩 넘깁니다.
 
+![compress/gzip은 해제와 CRC-32 계산을 goroutine 하나에서 하고, 1 MB를 넘으면 Gunzip은 해제를 계속하는 동안 두 번째 goroutine에서 CRC-32를 계산합니다.](docs/why-fast/gunzip-crc.svg)
+
 ### zstd가 빠른 이유
 
 - BMI2가 있는 amd64에서는 어셈블리가 시퀀스와 리터럴의 Huffman 스트림 4개를 해석하고, 시퀀스를 실행하고, 시퀀스를 인코딩합니다. BMI2 시프트는 아무 레지스터에서나 시프트 수를 가져옵니다. `GOAMD64=v3`만 켰을 때 Go 해제기가 15% 빨라졌는데, Go 루프가 시프트 수를 옮기는 데 명령어를 쓰고 있었기 때문입니다.
@@ -395,6 +409,8 @@ klauspost의 zstd 코드도 amd64에는 BMI2 어셈블리, arm64에는 시퀀스
 - 인코더는 예상 크기를 비교해 기본 FSE 테이블, 이전 테이블, 새 테이블 중 하나를 고릅니다.
 - Huffman 인코더는 스트림용으로 확보한 공간에 심볼 4개마다 8바이트를 씁니다. M1 Pro에서 레벨 3 바이너리의 리터럴을 인코딩하는 시간이 32 ms에서 8 ms로 줄었습니다.
 - 큰 입력은 goroutine 두 개로 압축합니다. 하나는 매치를 찾고, 다른 하나는 인코딩합니다.
+
+![klauspost DecodeAll은 블록마다 해석과 실행을 goroutine 하나에서 하고, zstd.Decode는 amd64에서 goroutine 2개, arm64에서 3개를 써서 현재 블록을 실행하는 동안 다음 블록을 해석합니다.](docs/why-fast/zstd-pipeline.svg)
 
 ## 안전성
 

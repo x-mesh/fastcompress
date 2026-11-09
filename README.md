@@ -2,6 +2,8 @@
 
 English | [한국어](README.ko.md)
 
+![Three decoders write the same line of a 100 MB log at gzip level 1 on an Apple M1 Pro. fastcompress takes 67.5 ms, klauspost 223 ms and compress/gzip 310 ms.](docs/why-fast/overview.svg)
+
 fastcompress decodes and encodes gzip, DEFLATE and zstd data in Go, without cgo. On an Apple M1 Pro, it decodes a 100 MB log about 3.3 times faster than `klauspost/compress/gzip`, at the speed of the system zlib on macOS. On an Intel Xeon, its zstd decoder and encoder are faster than `klauspost/compress/zstd` on each file that we measured.
 
 [Why fastcompress is fast](#why-fastcompress-is-fast) tells how the code differs from `compress/gzip` and `klauspost/compress`.
@@ -355,6 +357,14 @@ The DEFLATE decoders of `compress/flate` and `klauspost/compress/flate` v1.20.3 
 
 The flat buffer of `Reader` holds the last 32 KB of output plus up to 1 MB of new output. A match never wraps around the end of the buffer. `Gunzip` decodes directly into the result.
 
+![compress/gzip and klauspost refill a 32-bit buffer one byte at a time. fastcompress refills a 64-bit buffer with one 8-byte load.](docs/why-fast/refill.svg)
+
+![compress/gzip and klauspost shift out the code, then read and shift out the extra bits. fastcompress removes the code and the extra bits with one shift.](docs/why-fast/shift.svg)
+
+![compress/gzip and klauspost copy a match into a ring buffer, and the match can wrap. fastcompress copies 16 bytes at a time into a flat buffer, and the match never wraps.](docs/why-fast/copy.svg)
+
+The images show the same steps. The numbers of bits and bytes are an example.
+
 For compression, `compress/gzip` and `klauspost/compress/gzip` use one goroutine for a stream. `GzipConcurrent` and `Writer.SetConcurrency` split the input into chunks and compress them on more than one goroutine. The output size stays approximately the same as the output of `Gzip`.
 
 The zstd code of klauspost also has BMI2 assembly on amd64 and sequence assembly on arm64. It also decodes the sequences of a block before it executes them. The differences are in smaller details, which [Why zstd is fast](#why-zstd-is-fast) lists, and in goroutines. With more than one CPU, `zstd.Decode` and `zstd.Encode` use more than one goroutine for one frame of 1 MB or more. The klauspost `DecodeAll` and `EncodeAll` use one goroutine.
@@ -368,6 +378,8 @@ The zstd code of klauspost also has BMI2 assembly on amd64 and sequence assembly
 - The Huffman code lengths come from the Moffat and Katajainen method. If a length is more than 15 bits, the encoder uses the package-merge method.
 - Concurrent compression gives each goroutine a chunk of 16 blocks. The encoder first puts the 32 KB before the chunk in the hash tables, and ends the chunk with an empty stored block to align it to a byte. Each goroutine also computes the CRC-32 of its chunk. A port of `crc32_combine` from zlib joins the checksums.
 - A new stream does not clear the hash tables. The tables keep each position plus a base, and the encoder moves the base past all the old entries. The tables have up to 768 KB, so for an input of 1 KB, the clear took most of the time.
+
+![compress/gzip compresses all chunks on one goroutine. GzipConcurrent compresses each chunk on its own goroutine, and crc32_combine joins the checksums.](docs/why-fast/gzip-concurrent.svg)
 
 ### Why decompression is fast
 
@@ -384,6 +396,8 @@ The zstd code of klauspost also has BMI2 assembly on amd64 and sequence assembly
 - On arm64, an assembly function computes CRC-32 with `PMULL` carry-less multiplies. It folds eight 128-bit lanes in parallel. This is 45 GB/s, and `hash/crc32` is 8.4 GB/s.
 - Above 1 MB, `Gunzip` computes the CRC-32 on a second goroutine. The decoder gives it the output in steps of 1 MB or more, because each step can wake the goroutine.
 
+![compress/gzip decodes and computes CRC-32 on one goroutine. Above 1 MB, Gunzip computes CRC-32 on a second goroutine while the decoder continues.](docs/why-fast/gunzip-crc.svg)
+
 ### Why zstd is fast
 
 - On amd64 with BMI2, assembly decodes the sequences and the four Huffman streams of the literals, executes the sequences, and encodes the sequences. BMI2 shifts take their count from any register. With `GOAMD64=v3` alone, the Go decoder was 15% faster, because the Go loops spent instructions to move shift counts.
@@ -396,6 +410,8 @@ The zstd code of klauspost also has BMI2 assembly on amd64 and sequence assembly
 - The encoder chooses the predefined, the previous or a new FSE table by its estimated size.
 - The Huffman encoder writes 8 bytes after each 4 symbols, into space that it reserves for the stream. On an M1 Pro, this cut the time to encode the literals of the binaries at level 3 from 32 ms to 8 ms.
 - A large input compresses on two goroutines: one finds the matches, and the other encodes them.
+
+![klauspost DecodeAll decodes and executes each block on one goroutine. zstd.Decode uses two goroutines on amd64 and three on arm64, so the next block decodes while the current block executes.](docs/why-fast/zstd-pipeline.svg)
 
 ## Safety
 

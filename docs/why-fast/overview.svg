@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="272" viewBox="0 0 880 272" role="img" aria-labelledby="title desc"><title id="title">fastcompress decode time</title><desc id="desc">Three decoders write the same line of a 100 MB application log, each at the speed it measured on an Apple M1 Pro at gzip level 1: fastcompress in 67.5 ms, klauspost/compress in 223 ms and compress/gzip in 310 ms. fastcompress is about 3.3 times faster than klauspost. The decoder refills a 64-bit buffer with one 8-byte load, removes a code and its extra bits with one shift, copies matches 16 bytes at a time, and uses BMI2 and PMULL assembly.</desc><style>text{font-family:system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;font-size:13px}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.b{font-weight:600}.h{font-size:16px;font-weight:600}.s12{font-size:12px}.s11{font-size:11px}.grow{transform-box:fill-box;transform-origin:left center}
+.bg{fill:#ffffff;stroke:#d1d9e0}
+.t{fill:#1f2328}
+.m{fill:#59636e}
+.ln{stroke:#818b98;fill:none}
+.lnf{fill:#818b98}
+.cell{fill:#f6f8fa;stroke:#818b98}
+.f-old{fill:#6e7781}
+.f-new{fill:#0969da}
+.f-code{fill:#9a6700}
+.f-extra{fill:#8250df}
+.f-lit{fill:#1a7f37}
+.f-seq{fill:#bc4c00}
+.f-soft{fill:#ddf4ff;stroke:#0969da}
+.s-new{stroke:#0969da;fill:none}
+.s-code{stroke:#9a6700;fill:none}
+.on{fill:#ffffff}
+.cur{stroke:#1f2328}
+@media (prefers-color-scheme:dark){
+.bg{fill:#0d1117;stroke:#3d444d}
+.t{fill:#f0f6fc}
+.m{fill:#9198a1}
+.ln{stroke:#656c76;fill:none}
+.lnf{fill:#656c76}
+.cell{fill:#151b23;stroke:#656c76}
+.f-old{fill:#8d96a0}
+.f-new{fill:#4493f8}
+.f-code{fill:#d29922}
+.f-extra{fill:#ab7df8}
+.f-lit{fill:#3fb950}
+.f-seq{fill:#f0883e}
+.f-soft{fill:#0c2d6b;stroke:#4493f8}
+.s-new{stroke:#4493f8;fill:none}
+.s-code{stroke:#d29922;fill:none}
+.on{fill:#0d1117}
+.cur{stroke:#f0f6fc}
+}.paper{fill:#f7f6f2}.ink{fill:#1c1b19}.dim{fill:#6b6862}.acc{fill:#b8361e}.rule{stroke:#d9d6ce}.big{font-size:22px;font-weight:700}.lg{font-size:14px}.wipe{transform-box:fill-box;transform-origin:right center}.num{font-variant-numeric:tabular-nums}@media (prefers-color-scheme:dark){.paper{fill:#141414}.ink{fill:#ecebe6}.dim{fill:#9b978f}.acc{fill:#ff7b5c}.rule{stroke:#2e2d2a}}
+@keyframes k1{0%,7.33%{opacity:1;transform:scaleX(1)}19.21%{opacity:1;transform:scaleX(0)}92.67%{opacity:1;transform:scaleX(0)}97.07%,100%{opacity:1;transform:scaleX(1)}}
+@keyframes k2{0%,7.33%{opacity:1;transform:translateX(0)}19.21%{opacity:1;transform:translateX(512.3px)}22.87%,100%{opacity:0;transform:translateX(512.3px)}}
+@keyframes k3{0%,19.21%{opacity:0}20.67%,92.67%{opacity:1}97.07%,100%{opacity:0}}
+@keyframes k4{0%,7.33%{opacity:1;transform:scaleX(1)}46.57%{opacity:1;transform:scaleX(0)}92.67%{opacity:1;transform:scaleX(0)}97.07%,100%{opacity:1;transform:scaleX(1)}}
+@keyframes k5{0%,7.33%{opacity:1;transform:translateX(0)}46.57%{opacity:1;transform:translateX(512.3px)}50.23%,100%{opacity:0;transform:translateX(512.3px)}}
+@keyframes k6{0%,46.57%{opacity:0}48.04%,92.67%{opacity:1}97.07%,100%{opacity:0}}
+@keyframes k7{0%,7.33%{opacity:1;transform:scaleX(1)}61.88%{opacity:1;transform:scaleX(0)}92.67%{opacity:1;transform:scaleX(0)}97.07%,100%{opacity:1;transform:scaleX(1)}}
+@keyframes k8{0%,7.33%{opacity:1;transform:translateX(0)}61.88%{opacity:1;transform:translateX(512.3px)}65.54%,100%{opacity:0;transform:translateX(512.3px)}}
+@keyframes k9{0%,61.88%{opacity:0}63.34%,92.67%{opacity:1}97.07%,100%{opacity:0}}@media (prefers-reduced-motion:reduce){*{animation:none!important}}</style><rect class="paper" width="880" height="272" rx="6"/><text class="mono dim" x="28" y="38">gunzip, 100 MB application log, level 1, Apple M1 Pro</text><text class="mono lg ink" x="28" y="82">fastcompress</text><text class="mono ink" x="172" y="82">2026-11-07T09:14:03.218Z INFO api GET /v1/orders/48213 200 12.4ms</text><rect class="paper wipe" style="opacity:0;animation:k1 6.82s linear infinite;" x="170" y="67" width="512.3" height="21"/><rect class="acc" style="opacity:0;animation:k2 6.82s linear infinite;" x="172" y="69" width="8" height="17"/><text class="mono num big acc" style="animation:k3 6.82s linear infinite;" x="724" y="85">67.5 ms</text><text class="mono lg dim" x="28" y="126">klauspost</text><text class="mono ink" x="172" y="126">2026-11-07T09:14:03.218Z INFO api GET /v1/orders/48213 200 12.4ms</text><rect class="paper wipe" style="opacity:0;animation:k4 6.82s linear infinite;" x="170" y="111" width="512.3" height="21"/><rect class="dim" style="opacity:0;animation:k5 6.82s linear infinite;" x="172" y="113" width="8" height="17"/><text class="mono num lg dim" style="animation:k6 6.82s linear infinite;" x="724" y="126">223 ms</text><text class="mono lg dim" x="28" y="170">compress/gzip</text><text class="mono ink" x="172" y="170">2026-11-07T09:14:03.218Z INFO api GET /v1/orders/48213 200 12.4ms</text><rect class="paper wipe" style="opacity:0;animation:k7 6.82s linear infinite;" x="170" y="155" width="512.3" height="21"/><rect class="dim" style="opacity:0;animation:k8 6.82s linear infinite;" x="172" y="157" width="8" height="17"/><text class="mono num lg dim" style="animation:k9 6.82s linear infinite;" x="724" y="170">310 ms</text><path class="rule" d="M28 204H852"/><text class="mono ink" x="28" y="232">about 3.3× faster than klauspost/compress</text><text class="mono dim" x="28" y="254">64-bit refill, one shift per code, 16-byte copies, BMI2 and PMULL assembly</text></svg>

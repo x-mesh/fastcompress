@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="290" viewBox="0 0 880 290" role="img" aria-labelledby="title desc"><title id="title">Refill the bit buffer</title><desc id="desc">compress/gzip and klauspost refill a 32-bit buffer one byte for each turn of a loop. fastcompress refills a 64-bit buffer with one unaligned 8-byte load and no branch.</desc><style>text{font-family:system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;font-size:13px}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.b{font-weight:600}.h{font-size:16px;font-weight:600}.s12{font-size:12px}.s11{font-size:11px}.grow{transform-box:fill-box;transform-origin:left center}
+.bg{fill:#ffffff;stroke:#d1d9e0}
+.t{fill:#1f2328}
+.m{fill:#59636e}
+.ln{stroke:#818b98;fill:none}
+.lnf{fill:#818b98}
+.cell{fill:#f6f8fa;stroke:#818b98}
+.f-old{fill:#6e7781}
+.f-new{fill:#0969da}
+.f-code{fill:#9a6700}
+.f-extra{fill:#8250df}
+.f-lit{fill:#1a7f37}
+.f-seq{fill:#bc4c00}
+.f-soft{fill:#ddf4ff;stroke:#0969da}
+.s-new{stroke:#0969da;fill:none}
+.s-code{stroke:#9a6700;fill:none}
+.on{fill:#ffffff}
+.cur{stroke:#1f2328}
+@media (prefers-color-scheme:dark){
+.bg{fill:#0d1117;stroke:#3d444d}
+.t{fill:#f0f6fc}
+.m{fill:#9198a1}
+.ln{stroke:#656c76;fill:none}
+.lnf{fill:#656c76}
+.cell{fill:#151b23;stroke:#656c76}
+.f-old{fill:#8d96a0}
+.f-new{fill:#4493f8}
+.f-code{fill:#d29922}
+.f-extra{fill:#ab7df8}
+.f-lit{fill:#3fb950}
+.f-seq{fill:#f0883e}
+.f-soft{fill:#0c2d6b;stroke:#4493f8}
+.s-new{stroke:#4493f8;fill:none}
+.s-code{stroke:#d29922;fill:none}
+.on{fill:#0d1117}
+.cur{stroke:#f0f6fc}
+}@keyframes k1{0%,10.00%{opacity:0;transform:translateY(-26px)}15.00%,91.67%{opacity:1;transform:translateY(0)}96.67%,100%{opacity:0}}
+@keyframes k2{0%,25.00%{opacity:0;transform:translateY(-26px)}30.00%,91.67%{opacity:1;transform:translateY(0)}96.67%,100%{opacity:0}}
+@keyframes k3{0%,40.00%{opacity:0;transform:translateY(-26px)}45.00%,91.67%{opacity:1;transform:translateY(0)}96.67%,100%{opacity:0}}
+@keyframes k4{0%,55.00%{opacity:0;transform:translateY(-26px)}60.00%,91.67%{opacity:1;transform:translateY(0)}96.67%,100%{opacity:0}}
+@keyframes k5{0%,10.00%{opacity:0;transform:translateY(-26px)}15.00%,91.67%{opacity:1;transform:translateY(0)}96.67%,100%{opacity:0}}
+@keyframes k6{0%,10.00%{opacity:0;transform:translateY(-26px)}15.00%,91.67%{opacity:1;transform:translateY(0)}96.67%,100%{opacity:0}}
+@keyframes k7{0%,10.00%{opacity:0;transform:translateY(-26px)}15.00%,91.67%{opacity:1;transform:translateY(0)}96.67%,100%{opacity:0}}
+@keyframes k8{0%,10.00%{opacity:0;transform:translateY(-26px)}15.00%,91.67%{opacity:1;transform:translateY(0)}96.67%,100%{opacity:0}}
+@keyframes k9{0%,10.00%{opacity:0;transform:translateY(-26px)}15.00%,91.67%{opacity:1;transform:translateY(0)}96.67%,100%{opacity:0}}
+@keyframes k10{0%,10.00%{opacity:0;transform:translateY(-26px)}15.00%,91.67%{opacity:1;transform:translateY(0)}96.67%,100%{opacity:0}}
+@keyframes k11{0%,10.00%{opacity:0;transform:translateY(-26px)}15.00%,91.67%{opacity:1;transform:translateY(0)}96.67%,100%{opacity:0}}
+@keyframes k12{0%,10.00%{opacity:0;transform:translateY(-26px)}15.00%,91.67%{opacity:1;transform:translateY(0)}96.67%,100%{opacity:0}}
+@keyframes k13{0%,10.00%{opacity:0}10.83%,25.00%{opacity:1}25.83%,100%{opacity:0}}
+@keyframes k14{0%,25.00%{opacity:0}25.83%,40.00%{opacity:1}40.83%,100%{opacity:0}}
+@keyframes k15{0%,40.00%{opacity:0}40.83%,55.00%{opacity:1}55.83%,100%{opacity:0}}
+@keyframes k16{0%,55.00%{opacity:0}55.83%,91.67%{opacity:1}96.67%,100%{opacity:0}}
+@keyframes k17{0%,15.00%{opacity:0}18.33%,91.67%{opacity:1}96.67%,100%{opacity:0}}@media (prefers-reduced-motion:reduce){*{animation:none!important}}</style><rect class="bg" x="0.5" y="0.5" width="879" height="289" rx="12"/><text class="t h" x="28" y="40">Refill the bit buffer</text><text class="t b" x="28" y="88">compress/gzip, klauspost</text><text class="m" x="28" y="108">32-bit buffer, 1 byte per turn</text><rect class="cell" x="300" y="70" width="46" height="40" rx="4"/><rect class="cell" x="350" y="70" width="46" height="40" rx="4"/><rect class="cell" x="400" y="70" width="46" height="40" rx="4"/><rect class="cell" x="450" y="70" width="46" height="40" rx="4"/><g style="animation:k1 6.0s linear infinite;"><rect class="f-old" x="300" y="70" width="46" height="40" rx="4"/><text class="on mono" x="323.0" y="95" text-anchor="middle">1f</text></g><g style="animation:k2 6.0s linear infinite;"><rect class="f-old" x="350" y="70" width="46" height="40" rx="4"/><text class="on mono" x="373.0" y="95" text-anchor="middle">8b</text></g><g style="animation:k3 6.0s linear infinite;"><rect class="f-old" x="400" y="70" width="46" height="40" rx="4"/><text class="on mono" x="423.0" y="95" text-anchor="middle">08</text></g><g style="animation:k4 6.0s linear infinite;"><rect class="f-old" x="450" y="70" width="46" height="40" rx="4"/><text class="on mono" x="473.0" y="95" text-anchor="middle">00</text></g><path class="ln" d="M300 118v6h196v-6"/><text class="m s12" x="398.0" y="140" text-anchor="middle">32 bits</text><text class="t b" x="28" y="198">fastcompress</text><text class="m" x="28" y="218">64-bit buffer, one 8-byte load</text><rect class="cell" x="300" y="180" width="46" height="40" rx="4"/><rect class="cell" x="350" y="180" width="46" height="40" rx="4"/><rect class="cell" x="400" y="180" width="46" height="40" rx="4"/><rect class="cell" x="450" y="180" width="46" height="40" rx="4"/><rect class="cell" x="500" y="180" width="46" height="40" rx="4"/><rect class="cell" x="550" y="180" width="46" height="40" rx="4"/><rect class="cell" x="600" y="180" width="46" height="40" rx="4"/><rect class="cell" x="650" y="180" width="46" height="40" rx="4"/><g style="animation:k5 6.0s linear infinite;"><rect class="f-new" x="300" y="180" width="46" height="40" rx="4"/><text class="on mono" x="323.0" y="205" text-anchor="middle">1f</text></g><g style="animation:k6 6.0s linear infinite;"><rect class="f-new" x="350" y="180" width="46" height="40" rx="4"/><text class="on mono" x="373.0" y="205" text-anchor="middle">8b</text></g><g style="animation:k7 6.0s linear infinite;"><rect class="f-new" x="400" y="180" width="46" height="40" rx="4"/><text class="on mono" x="423.0" y="205" text-anchor="middle">08</text></g><g style="animation:k8 6.0s linear infinite;"><rect class="f-new" x="450" y="180" width="46" height="40" rx="4"/><text class="on mono" x="473.0" y="205" text-anchor="middle">00</text></g><g style="animation:k9 6.0s linear infinite;"><rect class="f-new" x="500" y="180" width="46" height="40" rx="4"/><text class="on mono" x="523.0" y="205" text-anchor="middle">a3</text></g><g style="animation:k10 6.0s linear infinite;"><rect class="f-new" x="550" y="180" width="46" height="40" rx="4"/><text class="on mono" x="573.0" y="205" text-anchor="middle">5c</text></g><g style="animation:k11 6.0s linear infinite;"><rect class="f-new" x="600" y="180" width="46" height="40" rx="4"/><text class="on mono" x="623.0" y="205" text-anchor="middle">12</text></g><g style="animation:k12 6.0s linear infinite;"><rect class="f-new" x="650" y="180" width="46" height="40" rx="4"/><text class="on mono" x="673.0" y="205" text-anchor="middle">64</text></g><path class="ln" d="M300 228v6h396v-6"/><text class="m s12" x="498.0" y="250" text-anchor="middle">64 bits</text><text class="t b" x="530" y="96" style="opacity:0;animation:k13 6.0s linear infinite;">turn 1</text><text class="t b" x="530" y="96" style="opacity:0;animation:k14 6.0s linear infinite;">turn 2</text><text class="t b" x="530" y="96" style="opacity:0;animation:k15 6.0s linear infinite;">turn 3</text><text class="t b" x="530" y="96" style="animation:k16 6.0s linear infinite;">turn 4</text><text class="m s12" x="530" y="114">a branch on each turn</text><text class="t b" x="712" y="206" style="animation:k17 6.0s linear infinite;">1 load</text><text class="m s12" x="712" y="224" style="animation:k17 6.0s linear infinite;">no branch</text></svg>

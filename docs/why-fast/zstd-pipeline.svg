@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="440" viewBox="0 0 880 440" role="img" aria-labelledby="title desc"><title id="title">Decode a large zstd frame</title><desc id="desc">klauspost DecodeAll decodes the literals and the sequences of each block and executes them on one goroutine. For a frame of 1 MB or more, zstd.Decode uses two goroutines on amd64 and three on arm64, so the next block decodes while the current block executes.</desc><style>text{font-family:system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;font-size:13px}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.b{font-weight:600}.h{font-size:16px;font-weight:600}.s12{font-size:12px}.s11{font-size:11px}.grow{transform-box:fill-box;transform-origin:left center}
+.bg{fill:#ffffff;stroke:#d1d9e0}
+.t{fill:#1f2328}
+.m{fill:#59636e}
+.ln{stroke:#818b98;fill:none}
+.lnf{fill:#818b98}
+.cell{fill:#f6f8fa;stroke:#818b98}
+.f-old{fill:#6e7781}
+.f-new{fill:#0969da}
+.f-code{fill:#9a6700}
+.f-extra{fill:#8250df}
+.f-lit{fill:#1a7f37}
+.f-seq{fill:#bc4c00}
+.f-soft{fill:#ddf4ff;stroke:#0969da}
+.s-new{stroke:#0969da;fill:none}
+.s-code{stroke:#9a6700;fill:none}
+.on{fill:#ffffff}
+.cur{stroke:#1f2328}
+@media (prefers-color-scheme:dark){
+.bg{fill:#0d1117;stroke:#3d444d}
+.t{fill:#f0f6fc}
+.m{fill:#9198a1}
+.ln{stroke:#656c76;fill:none}
+.lnf{fill:#656c76}
+.cell{fill:#151b23;stroke:#656c76}
+.f-old{fill:#8d96a0}
+.f-new{fill:#4493f8}
+.f-code{fill:#d29922}
+.f-extra{fill:#ab7df8}
+.f-lit{fill:#3fb950}
+.f-seq{fill:#f0883e}
+.f-soft{fill:#0c2d6b;stroke:#4493f8}
+.s-new{stroke:#4493f8;fill:none}
+.s-code{stroke:#d29922;fill:none}
+.on{fill:#0d1117}
+.cur{stroke:#f0f6fc}
+}@keyframes k1{0%,0.00%{opacity:1;transform:scaleX(0)}4.92%,93.53%{opacity:1;transform:scaleX(1)}97.41%,100%{opacity:0}}
+@keyframes k2{0%,4.92%{opacity:0}6.86%,93.53%{opacity:1}97.41%,100%{opacity:0}}
+@keyframes k3{0%,4.92%{opacity:1;transform:scaleX(0)}12.29%,93.53%{opacity:1;transform:scaleX(1)}97.41%,100%{opacity:0}}
+@keyframes k4{0%,12.29%{opacity:0}14.23%,93.53%{opacity:1}97.41%,100%{opacity:0}}
+@keyframes k5{0%,12.29%{opacity:1;transform:scaleX(0)}22.12%,93.53%{opacity:1;transform:scaleX(1)}97.41%,100%{opacity:0}}
+@keyframes k6{0%,22.12%{opacity:0}24.06%,93.53%{opacity:1}97.41%,100%{opacity:0}}
+@keyframes k7{0%,22.12%{opacity:1;transform:scaleX(0)}27.04%,93.53%{opacity:1;transform:scaleX(1)}97.41%,100%{opacity:0}}
+@keyframes k8{0%,27.04%{opacity:0}28.98%,93.53%{opacity:1}97.41%,100%{opacity:0}}
+@keyframes k9{0%,27.04%{opacity:1;transform:scaleX(0)}34.41%,93.53%{opacity:1;transform:scaleX(1)}97.41%,100%{opacity:0}}
+@keyframes k10{0%,34.41%{opacity:0}36.35%,93.53%{opacity:1}97.41%,100%{opacity:0}}
+@keyframes k11{0%,34.41%{opacity:1;transform:scaleX(0)}44.24%,93.53%{opacity:1;transform:scaleX(1)}97.41%,100%{opacity:0}}
+@keyframes k12{0%,44.24%{opacity:0}46.18%,93.53%{opacity:1}97.41%,100%{opacity:0}}
+@keyframes k13{0%,44.24%{opacity:1;transform:scaleX(0)}49.16%,93.53%{opacity:1;transform:scaleX(1)}97.41%,100%{opacity:0}}
+@keyframes k14{0%,49.16%{opacity:0}51.10%,93.53%{opacity:1}97.41%,100%{opacity:0}}
+@keyframes k15{0%,49.16%{opacity:1;transform:scaleX(0)}56.53%,93.53%{opacity:1;transform:scaleX(1)}97.41%,100%{opacity:0}}
+@keyframes k16{0%,56.53%{opacity:0}58.47%,93.53%{opacity:1}97.41%,100%{opacity:0}}
+@keyframes k17{0%,56.53%{opacity:1;transform:scaleX(0)}66.36%,93.53%{opacity:1;transform:scaleX(1)}97.41%,100%{opacity:0}}
+@keyframes k18{0%,66.36%{opacity:0}68.31%,93.53%{opacity:1}97.41%,100%{opacity:0}}
+@keyframes k19{0%,66.36%{opacity:0}68.95%,93.53%{opacity:1}97.41%,100%{opacity:0}}
+@keyframes k20{0%,0.00%{opacity:1;transform:scaleX(0)}4.92%,93.53%{opacity:1;transform:scaleX(1)}97.41%,100%{opacity:0}}
+@keyframes k21{0%,4.92%{opacity:0}6.86%,93.53%{opacity:1}97.41%,100%{opacity:0}}
+@keyframes k22{0%,4.92%{opacity:1;transform:scaleX(0)}12.29%,93.53%{opacity:1;transform:scaleX(1)}97.41%,100%{opacity:0}}
+@keyframes k23{0%,12.29%{opacity:0}14.23%,93.53%{opacity:1}97.41%,100%{opacity:0}}
+@keyframes k24{0%,12.29%{opacity:1;transform:scaleX(0)}17.21%,93.53%{opacity:1;transform:scaleX(1)}97.41%,100%{opacity:0}}
+@keyframes k25{0%,17.21%{opacity:0}19.15%,93.53%{opacity:1}97.41%,100%{opacity:0}}
+@keyframes k26{0%,17.21%{opacity:1;transform:scaleX(0)}24.58%,93.53%{opacity:1;transform:scaleX(1)}97.41%,100%{opacity:0}}
+@keyframes k27{0%,24.58%{opacity:0}26.52%,93.53%{opacity:1}97.41%,100%{opacity:0}}
+@keyframes k28{0%,24.58%{opacity:1;transform:scaleX(0)}29.50%,93.53%{opacity:1;transform:scaleX(1)}97.41%,100%{opacity:0}}
+@keyframes k29{0%,29.50%{opacity:0}31.44%,93.53%{opacity:1}97.41%,100%{opacity:0}}
+@keyframes k30{0%,29.50%{opacity:1;transform:scaleX(0)}36.87%,93.53%{opacity:1;transform:scaleX(1)}97.41%,100%{opacity:0}}
+@keyframes k31{0%,36.87%{opacity:0}38.81%,93.53%{opacity:1}97.41%,100%{opacity:0}}
+@keyframes k32{0%,12.29%{opacity:1;transform:scaleX(0)}22.12%,93.53%{opacity:1;transform:scaleX(1)}97.41%,100%{opacity:0}}
+@keyframes k33{0%,22.12%{opacity:0}24.06%,93.53%{opacity:1}97.41%,100%{opacity:0}}
+@keyframes k34{0%,24.58%{opacity:1;transform:scaleX(0)}34.41%,93.53%{opacity:1;transform:scaleX(1)}97.41%,100%{opacity:0}}
+@keyframes k35{0%,34.41%{opacity:0}36.35%,93.53%{opacity:1}97.41%,100%{opacity:0}}
+@keyframes k36{0%,36.87%{opacity:1;transform:scaleX(0)}46.70%,93.53%{opacity:1;transform:scaleX(1)}97.41%,100%{opacity:0}}
+@keyframes k37{0%,46.70%{opacity:0}48.64%,93.53%{opacity:1}97.41%,100%{opacity:0}}
+@keyframes k38{0%,46.70%{opacity:0}49.29%,93.53%{opacity:1}97.41%,100%{opacity:0}}
+@keyframes k39{0%,0.00%{opacity:1;transform:scaleX(0)}4.92%,93.53%{opacity:1;transform:scaleX(1)}97.41%,100%{opacity:0}}
+@keyframes k40{0%,4.92%{opacity:0}6.86%,93.53%{opacity:1}97.41%,100%{opacity:0}}
+@keyframes k41{0%,4.92%{opacity:1;transform:scaleX(0)}9.83%,93.53%{opacity:1;transform:scaleX(1)}97.41%,100%{opacity:0}}
+@keyframes k42{0%,9.83%{opacity:0}11.77%,93.53%{opacity:1}97.41%,100%{opacity:0}}
+@keyframes k43{0%,9.83%{opacity:1;transform:scaleX(0)}14.75%,93.53%{opacity:1;transform:scaleX(1)}97.41%,100%{opacity:0}}
+@keyframes k44{0%,14.75%{opacity:0}16.69%,93.53%{opacity:1}97.41%,100%{opacity:0}}
+@keyframes k45{0%,0.00%{opacity:1;transform:scaleX(0)}7.37%,93.53%{opacity:1;transform:scaleX(1)}97.41%,100%{opacity:0}}
+@keyframes k46{0%,7.37%{opacity:0}9.31%,93.53%{opacity:1}97.41%,100%{opacity:0}}
+@keyframes k47{0%,7.37%{opacity:1;transform:scaleX(0)}14.75%,93.53%{opacity:1;transform:scaleX(1)}97.41%,100%{opacity:0}}
+@keyframes k48{0%,14.75%{opacity:0}16.69%,93.53%{opacity:1}97.41%,100%{opacity:0}}
+@keyframes k49{0%,14.75%{opacity:1;transform:scaleX(0)}22.12%,93.53%{opacity:1;transform:scaleX(1)}97.41%,100%{opacity:0}}
+@keyframes k50{0%,22.12%{opacity:0}24.06%,93.53%{opacity:1}97.41%,100%{opacity:0}}
+@keyframes k51{0%,7.37%{opacity:1;transform:scaleX(0)}17.21%,93.53%{opacity:1;transform:scaleX(1)}97.41%,100%{opacity:0}}
+@keyframes k52{0%,17.21%{opacity:0}19.15%,93.53%{opacity:1}97.41%,100%{opacity:0}}
+@keyframes k53{0%,17.21%{opacity:1;transform:scaleX(0)}27.04%,93.53%{opacity:1;transform:scaleX(1)}97.41%,100%{opacity:0}}
+@keyframes k54{0%,27.04%{opacity:0}28.98%,93.53%{opacity:1}97.41%,100%{opacity:0}}
+@keyframes k55{0%,27.04%{opacity:1;transform:scaleX(0)}36.87%,93.53%{opacity:1;transform:scaleX(1)}97.41%,100%{opacity:0}}
+@keyframes k56{0%,36.87%{opacity:0}38.81%,93.53%{opacity:1}97.41%,100%{opacity:0}}
+@keyframes k57{0%,36.87%{opacity:0}39.46%,93.53%{opacity:1}97.41%,100%{opacity:0}}
+@keyframes k58{0%{transform:translateX(0);opacity:1}66.36%{transform:translateX(513.0px);opacity:1}93.53%{transform:translateX(513.0px);opacity:1}97.41%,100%{transform:translateX(513.0px);opacity:0}}@media (prefers-reduced-motion:reduce){*{animation:none!important}}</style><rect class="bg" x="0.5" y="0.5" width="879" height="439" rx="12"/><text class="t h" x="28" y="40">Decode a large zstd frame</text><rect class="f-new" x="777.0" y="28" width="14" height="14" rx="3"/><text class="m s12" x="797.0" y="40">execute</text><rect class="f-seq" x="688.0" y="28" width="14" height="14" rx="3"/><text class="m s12" x="708.0" y="40">sequences</text><rect class="f-lit" x="606.0" y="28" width="14" height="14" rx="3"/><text class="m s12" x="626.0" y="40">literals</text><text class="t b" x="28" y="84">klauspost DecodeAll</text><text class="m s12" x="184.4" y="84">one goroutine</text><text class="m s12" x="44" y="113">goroutine 1</text><rect class="cell" x="300" y="96" width="513.0" height="26" rx="4" opacity=".6"/><rect class="f-lit grow" style="animation:k1 7.73s linear infinite;" x="301" y="97" width="36.0" height="24" rx="3"/><text class="on s12" style="animation:k2 7.73s linear infinite;" x="319.0" y="113" text-anchor="middle">L1</text><rect class="f-seq grow" style="animation:k3 7.73s linear infinite;" x="339.0" y="97" width="55.0" height="24" rx="3"/><text class="on s12" style="animation:k4 7.73s linear infinite;" x="366.5" y="113" text-anchor="middle">S1</text><rect class="f-new grow" style="animation:k5 7.73s linear infinite;" x="396.0" y="97" width="74.0" height="24" rx="3"/><text class="on s12" style="animation:k6 7.73s linear infinite;" x="433.0" y="113" text-anchor="middle">E1</text><rect class="f-lit grow" style="animation:k7 7.73s linear infinite;" x="472.0" y="97" width="36.0" height="24" rx="3"/><text class="on s12" style="animation:k8 7.73s linear infinite;" x="490.0" y="113" text-anchor="middle">L2</text><rect class="f-seq grow" style="animation:k9 7.73s linear infinite;" x="510.0" y="97" width="55.0" height="24" rx="3"/><text class="on s12" style="animation:k10 7.73s linear infinite;" x="537.5" y="113" text-anchor="middle">S2</text><rect class="f-new grow" style="animation:k11 7.73s linear infinite;" x="567.0" y="97" width="74.0" height="24" rx="3"/><text class="on s12" style="animation:k12 7.73s linear infinite;" x="604.0" y="113" text-anchor="middle">E2</text><rect class="f-lit grow" style="animation:k13 7.73s linear infinite;" x="643.0" y="97" width="36.0" height="24" rx="3"/><text class="on s12" style="animation:k14 7.73s linear infinite;" x="661.0" y="113" text-anchor="middle">L3</text><rect class="f-seq grow" style="animation:k15 7.73s linear infinite;" x="681.0" y="97" width="55.0" height="24" rx="3"/><text class="on s12" style="animation:k16 7.73s linear infinite;" x="708.5" y="113" text-anchor="middle">S3</text><rect class="f-new grow" style="animation:k17 7.73s linear infinite;" x="738.0" y="97" width="74.0" height="24" rx="3"/><text class="on s12" style="animation:k18 7.73s linear infinite;" x="775.0" y="113" text-anchor="middle">E3</text><path class="ln" style="animation:k19 7.73s linear infinite;" d="M813.0 92V126" stroke-width="2"/><text class="t b" x="28" y="162">fastcompress zstd.Decode, amd64</text><text class="m s12" x="275.6" y="162">frame of 1 MB or more</text><text class="m s12" x="44" y="191">literals + sequences</text><rect class="cell" x="300" y="174" width="513.0" height="26" rx="4" opacity=".6"/><rect class="f-lit grow" style="animation:k20 7.73s linear infinite;" x="301.0" y="175" width="36.0" height="24" rx="3"/><text class="on s12" style="animation:k21 7.73s linear infinite;" x="319.0" y="191" text-anchor="middle">L1</text><rect class="f-seq grow" style="animation:k22 7.73s linear infinite;" x="339.0" y="175" width="55.0" height="24" rx="3"/><text class="on s12" style="animation:k23 7.73s linear infinite;" x="366.5" y="191" text-anchor="middle">S1</text><rect class="f-lit grow" style="animation:k24 7.73s linear infinite;" x="396.0" y="175" width="36.0" height="24" rx="3"/><text class="on s12" style="animation:k25 7.73s linear infinite;" x="414.0" y="191" text-anchor="middle">L2</text><rect class="f-seq grow" style="animation:k26 7.73s linear infinite;" x="434.0" y="175" width="55.0" height="24" rx="3"/><text class="on s12" style="animation:k27 7.73s linear infinite;" x="461.5" y="191" text-anchor="middle">S2</text><rect class="f-lit grow" style="animation:k28 7.73s linear infinite;" x="491.0" y="175" width="36.0" height="24" rx="3"/><text class="on s12" style="animation:k29 7.73s linear infinite;" x="509.0" y="191" text-anchor="middle">L3</text><rect class="f-seq grow" style="animation:k30 7.73s linear infinite;" x="529.0" y="175" width="55.0" height="24" rx="3"/><text class="on s12" style="animation:k31 7.73s linear infinite;" x="556.5" y="191" text-anchor="middle">S3</text><text class="m s12" x="44" y="225">execute</text><rect class="cell" x="300" y="208" width="513.0" height="26" rx="4" opacity=".6"/><rect class="f-new grow" style="animation:k32 7.73s linear infinite;" x="396.0" y="209" width="74.0" height="24" rx="3"/><text class="on s12" style="animation:k33 7.73s linear infinite;" x="433.0" y="225" text-anchor="middle">E1</text><rect class="f-new grow" style="animation:k34 7.73s linear infinite;" x="491.0" y="209" width="74.0" height="24" rx="3"/><text class="on s12" style="animation:k35 7.73s linear infinite;" x="528.0" y="225" text-anchor="middle">E2</text><rect class="f-new grow" style="animation:k36 7.73s linear infinite;" x="586.0" y="209" width="74.0" height="24" rx="3"/><text class="on s12" style="animation:k37 7.73s linear infinite;" x="623.0" y="225" text-anchor="middle">E3</text><path class="ln" style="animation:k38 7.73s linear infinite;" d="M661.0 170V238" stroke-width="2"/><text class="t b" x="28" y="274">fastcompress zstd.Decode, arm64</text><text class="m s12" x="275.6" y="274">frame of 1 MB or more</text><text class="m s12" x="44" y="303">literals</text><rect class="cell" x="300" y="286" width="513.0" height="26" rx="4" opacity=".6"/><rect class="f-lit grow" style="animation:k39 7.73s linear infinite;" x="301.0" y="287" width="36.0" height="24" rx="3"/><text class="on s12" style="animation:k40 7.73s linear infinite;" x="319.0" y="303" text-anchor="middle">L1</text><rect class="f-lit grow" style="animation:k41 7.73s linear infinite;" x="339.0" y="287" width="36.0" height="24" rx="3"/><text class="on s12" style="animation:k42 7.73s linear infinite;" x="357.0" y="303" text-anchor="middle">L2</text><rect class="f-lit grow" style="animation:k43 7.73s linear infinite;" x="377.0" y="287" width="36.0" height="24" rx="3"/><text class="on s12" style="animation:k44 7.73s linear infinite;" x="395.0" y="303" text-anchor="middle">L3</text><text class="m s12" x="44" y="337">sequences</text><rect class="cell" x="300" y="320" width="513.0" height="26" rx="4" opacity=".6"/><rect class="f-seq grow" style="animation:k45 7.73s linear infinite;" x="301.0" y="321" width="55.0" height="24" rx="3"/><text class="on s12" style="animation:k46 7.73s linear infinite;" x="328.5" y="337" text-anchor="middle">S1</text><rect class="f-seq grow" style="animation:k47 7.73s linear infinite;" x="358.0" y="321" width="55.0" height="24" rx="3"/><text class="on s12" style="animation:k48 7.73s linear infinite;" x="385.5" y="337" text-anchor="middle">S2</text><rect class="f-seq grow" style="animation:k49 7.73s linear infinite;" x="415.0" y="321" width="55.0" height="24" rx="3"/><text class="on s12" style="animation:k50 7.73s linear infinite;" x="442.5" y="337" text-anchor="middle">S3</text><text class="m s12" x="44" y="371">execute</text><rect class="cell" x="300" y="354" width="513.0" height="26" rx="4" opacity=".6"/><rect class="f-new grow" style="animation:k51 7.73s linear infinite;" x="358.0" y="355" width="74.0" height="24" rx="3"/><text class="on s12" style="animation:k52 7.73s linear infinite;" x="395.0" y="371" text-anchor="middle">E1</text><rect class="f-new grow" style="animation:k53 7.73s linear infinite;" x="434.0" y="355" width="74.0" height="24" rx="3"/><text class="on s12" style="animation:k54 7.73s linear infinite;" x="471.0" y="371" text-anchor="middle">E2</text><rect class="f-new grow" style="animation:k55 7.73s linear infinite;" x="510.0" y="355" width="74.0" height="24" rx="3"/><text class="on s12" style="animation:k56 7.73s linear infinite;" x="547.0" y="371" text-anchor="middle">E3</text><path class="ln" style="animation:k57 7.73s linear infinite;" d="M585.0 282V384" stroke-width="2"/><path class="cur" style="opacity:0;animation:k58 7.73s linear infinite;" d="M300 70V388" stroke-width="1" stroke-dasharray="3 3"/><text class="m s12" x="28" y="420">L, S, E: literals, sequences and execution of block 1, 2, 3. The lengths are an example.</text></svg>
