@@ -2,7 +2,7 @@
 
 [English](README.md) | 한국어
 
-![세 해제기가 Apple M1 Pro에서 gzip 레벨 1로 압축한 100 MB 로그의 같은 줄을 출력합니다. fastcompress는 67.5 ms, klauspost는 223 ms, compress/gzip은 310 ms가 걸립니다.](docs/why-fast/overview.svg)
+![gzip 레벨 1로 압축된 100 MB 로그를 Apple M1 Pro에서 해제할 때, 세 해제기가 같은 로그 줄을 출력합니다. fastcompress는 67.5 ms, klauspost는 223 ms, compress/gzip은 310 ms가 걸립니다.](docs/why-fast/overview.svg)
 
 fastcompress는 gzip, DEFLATE, zstd 데이터를 cgo 없이 Go로 압축하고 해제합니다. Apple M1 Pro에서 100 MB 로그를 `klauspost/compress/gzip`보다 약 3.3배 빠르게 해제하며, 이 속도는 macOS 시스템 zlib과 같은 수준입니다. Intel Xeon에서 측정한 모든 파일에서 zstd 해제와 압축이 `klauspost/compress/zstd`보다 빨랐습니다.
 

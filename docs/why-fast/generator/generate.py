@@ -75,7 +75,7 @@ class Svg:
                f'<style>{css}</style>'
                + (self.panel or f'<rect class="bg" x="0.5" y="0.5" width="{self.w-1}" height="{self.h-1}" rx="12"/>')
                + ''.join(self.body) + '</svg>\n')
-        with open(path, 'w') as f:
+        with open(path, 'w', encoding='utf-8', newline='\n') as f:
             f.write(out)
 
 
