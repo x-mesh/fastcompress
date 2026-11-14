@@ -11,7 +11,13 @@ var (
 	ErrCorrupt = errors.New("gzip: corrupt deflate data")
 	errEOF     = io.ErrUnexpectedEOF
 	errNoRoom  = errors.New("gzip: table too small")
+	// ErrTooLarge reports a stream that decodes to more bytes than the limit
+	// given to InflateLimit.
+	ErrTooLarge = errors.New("gzip: output exceeds the limit")
 )
+
+// noLimit leaves room to add fastOutMargin without overflow.
+const noLimit = int(^uint(0)>>1) - fastOutMargin
 
 // Root table sizes. Larger roots send fewer codes to sub-tables. The decoder
 // tries 10/7 and falls back to 9/6 when the tables do not fit; zlib's ENOUGH
@@ -47,8 +53,12 @@ type decoder struct {
 
 	out  []byte
 	base int // start of this stream's output in out; matches may not reach before it
-	// stream stops decoding when out is full instead of growing it
+	// stream pauses at lim, within the capacity of out, instead of growing
+	// out
 	stream bool
+	// decoding pauses (stream) or fails (InflateLimit) once len(out)
+	// reaches lim
+	lim int
 
 	state      blockState
 	final      bool
@@ -98,15 +108,37 @@ func init() {
 // Inflate decodes one raw DEFLATE stream from src and appends it to dst.
 // It returns the extended slice and the number of input bytes consumed.
 func Inflate(dst, src []byte) ([]byte, int, error) {
-	return inflate(dst, src, nil)
+	return inflate(dst, src, nil, noLimit)
+}
+
+// InflateLimit is Inflate for a stream that can decode to more than limit
+// bytes. It then stops early and returns dst with the first limit bytes and
+// ErrTooLarge. It panics if limit is negative.
+func InflateLimit(dst, src []byte, limit int) ([]byte, int, error) {
+	if limit < 0 {
+		panic("gzip: negative limit")
+	}
+	lim := noLimit
+	if limit < noLimit-len(dst) {
+		lim = len(dst) + limit + 1
+	}
+	out, n, err := inflate(dst, src, nil, lim)
+	// the stream can end on the byte that reaches lim
+	if err == nil && len(out)-len(dst) > limit {
+		err = ErrTooLarge
+	}
+	if err == ErrTooLarge {
+		out = out[:len(dst)+limit]
+	}
+	return out, n, err
 }
 
 // inflate sends finished blocks' output to blocks when it is not nil, at
 // least crcBatch bytes at a time and the rest after the final block.
 // Those bytes are never written again, so a reader may use them while
 // decoding continues.
-func inflate(dst, src []byte, blocks chan<- []byte) ([]byte, int, error) {
-	d := decoder{in: src, out: dst, base: len(dst), blocks: blocks, sent: len(dst)}
+func inflate(dst, src []byte, blocks chan<- []byte, lim int) ([]byte, int, error) {
+	d := decoder{in: src, out: dst, base: len(dst), blocks: blocks, sent: len(dst), lim: lim}
 	err := d.step()
 	return d.out, d.ip, err
 }
@@ -165,16 +197,23 @@ func (d *decoder) take(n uint) uint32 {
 	return v
 }
 
-// room is the output space left; unlimited when out can grow.
+// room is the output left before lim. In stream mode, fill keeps lim within
+// the capacity of out.
 func (d *decoder) room() int {
-	if !d.stream {
-		return int(^uint(0) >> 1)
+	return d.lim - len(d.out)
+}
+
+// full is the result of reaching lim: a pause in stream mode, an error for
+// InflateLimit.
+func (d *decoder) full() error {
+	if d.stream {
+		return nil
 	}
-	return cap(d.out) - len(d.out)
+	return ErrTooLarge
 }
 
 // step decodes blocks until the stream ends or, in stream mode, until out
-// has no room for another symbol.
+// reaches lim.
 func (d *decoder) step() error {
 	for {
 		switch d.state {
@@ -246,11 +285,11 @@ func (d *decoder) storedHeader() error {
 	return nil
 }
 
-// stored copies a stored block; done is false when out is full.
+// stored copies a stored block; done is false when out reaches lim.
 func (d *decoder) stored() (done bool, err error) {
 	for d.storedLeft > 0 {
-		if d.room() == 0 {
-			return false, nil
+		if d.room() <= 0 {
+			return false, d.full()
 		}
 		if d.bits >= 8 {
 			d.out = append(d.out, byte(d.take(8)))
@@ -466,17 +505,17 @@ func extraBits(pre uint64, e uint32) uint32 {
 	return uint32(pre>>((entryBits(e)-n)&63)) & (1<<n - 1)
 }
 
-// huffman decodes the current compressed block. done is false when out has
-// no room for another symbol (stream mode only).
+// huffman decodes the current compressed block. done is false when out
+// reaches lim.
 func (d *decoder) huffman() (done bool, err error) {
 	for {
 		if len(d.in)-d.ip < fastInMargin {
 			d.more()
 		}
+		if len(d.out) >= d.lim {
+			return false, d.full()
+		}
 		if cap(d.out)-len(d.out) < fastOutMargin {
-			if d.stream {
-				return false, nil
-			}
 			d.grow()
 		}
 		if len(d.in)-d.ip >= fastInMargin {
@@ -524,7 +563,7 @@ func (d *decoder) huffman() (done bool, err error) {
 
 // grow keeps room for the fast loop's over-writes.
 func (d *decoder) grow() {
-	n := 2*cap(d.out) + fastOutMargin
+	n := min(2*cap(d.out), d.lim) + fastOutMargin
 	out := make([]byte, len(d.out), n)
 	copy(out, d.out)
 	d.out = out

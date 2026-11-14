@@ -1,6 +1,7 @@
 package gzip_test
 
 import (
+	"archive/zip"
 	"bytes"
 	stdgzip "compress/gzip"
 	"fmt"
@@ -91,4 +92,47 @@ func ExampleGzipConcurrent() {
 	}
 	fmt.Println(bytes.Equal(got, text))
 	// Output: true
+}
+
+func ExampleNewInflateReader() {
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	w, err := zw.Create("hello.txt")
+	if err != nil {
+		log.Fatal(err)
+	}
+	io.WriteString(w, "hello, zip\n")
+	if err := zw.Close(); err != nil {
+		log.Fatal(err)
+	}
+
+	zr, err := zip.NewReader(bytes.NewReader(buf.Bytes()), int64(buf.Len()))
+	if err != nil {
+		log.Fatal(err)
+	}
+	// archive/zip gives the decompressor a reader that ends with the entry
+	zr.RegisterDecompressor(zip.Deflate, func(r io.Reader) io.ReadCloser {
+		return gzip.NewInflateReader(r)
+	})
+	f, err := zr.File[0].Open()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer f.Close()
+	text, err := io.ReadAll(f)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Print(string(text))
+	// Output: hello, zip
+}
+
+func ExampleInflateLimit() {
+	raw, err := gzip.Deflate(nil, make([]byte, 8<<20), gzip.BestCompression)
+	if err != nil {
+		log.Fatal(err)
+	}
+	out, _, err := gzip.InflateLimit(nil, raw, 1<<20)
+	fmt.Println(len(out), err)
+	// Output: 1048576 gzip: output exceeds the limit
 }

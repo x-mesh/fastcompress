@@ -489,3 +489,149 @@ func TestReaderSmallInput(t *testing.T) {
 		}
 	}
 }
+
+func flateBytes(t testing.TB, data []byte, level int) []byte {
+	var buf bytes.Buffer
+	w, _ := flate.NewWriter(&buf, level)
+	w.Write(data)
+	w.Close()
+	return buf.Bytes()
+}
+
+func TestInflateReader(t *testing.T) {
+	r := rand.New(rand.NewPCG(37, 38))
+	z := NewInflateReader(bytes.NewReader(nil))
+	for _, n := range []int{0, 1, 5000, 300000, 3 << 20} {
+		for _, lv := range []int{flate.NoCompression, 1, 6, 9, flate.HuffmanOnly} {
+			data := sampleData(r, n)
+			src := flateBytes(t, data, lv)
+			for _, rs := range []int{1, 777, 8000, 64 << 10} {
+				z.Reset(bytes.NewReader(src))
+				got, err := readWith(z, rs)
+				if err != nil || !bytes.Equal(got, data) {
+					t.Fatalf("n=%d level=%d, %d-byte reads: %d bytes, %v", n, lv, rs, len(got), err)
+				}
+			}
+			// a closed reader takes buffers from the pool at the next Reset
+			z.Close()
+			if _, err := z.Read(make([]byte, 1)); err == nil {
+				t.Fatal("read after Close: no error")
+			}
+			z.Reset(bytes.NewReader(src[:len(src)/2]))
+			if _, err := io.ReadAll(z); err == nil {
+				t.Fatalf("n=%d level=%d: truncated stream: no error", n, lv)
+			}
+		}
+	}
+}
+
+func TestInflateLimit(t *testing.T) {
+	r := rand.New(rand.NewPCG(39, 40))
+	prefix := []byte("prefix")
+	for _, n := range []int{0, 1, 300, 5000, 300000, 3 << 20} {
+		for _, lv := range []int{flate.NoCompression, 1, 9} {
+			data := sampleData(r, n)
+			src := flateBytes(t, data, lv)
+			for _, limit := range []int{n, n + 1, 1 << 40} {
+				out, used, err := InflateLimit(prefix, src, limit)
+				if err != nil || used != len(src) || !bytes.Equal(out[len(prefix):], data) {
+					t.Fatalf("n=%d level=%d limit=%d: %d bytes, %v", n, lv, limit, len(out)-len(prefix), err)
+				}
+			}
+			for _, limit := range []int{0, n / 2, n - 1} {
+				if limit < 0 || limit >= n {
+					continue
+				}
+				out, _, err := InflateLimit(prefix, src, limit)
+				if err != ErrTooLarge || !bytes.Equal(out[:len(prefix)], prefix) || !bytes.Equal(out[len(prefix):], data[:limit]) {
+					t.Fatalf("n=%d level=%d limit=%d: %d bytes, %v", n, lv, limit, len(out)-len(prefix), err)
+				}
+			}
+		}
+	}
+
+	// the limit stops 64 MiB of zeros, 65 KB of input, before it allocates
+	// the output
+	src := flateBytes(t, make([]byte, 64<<20), 9)
+	out, _, err := InflateLimit(nil, src, 1<<20)
+	if err != ErrTooLarge || len(out) != 1<<20 || cap(out) > 2<<20 {
+		t.Fatalf("zeros: %v, len %d, cap %d", err, len(out), cap(out))
+	}
+
+	defer func() {
+		if recover() == nil {
+			t.Fatal("negative limit: no panic")
+		}
+	}()
+	InflateLimit(nil, src, -1)
+}
+
+// A read of the start of a long stream decodes about as much as it asks for.
+func TestShortRead(t *testing.T) {
+	data := make([]byte, 1<<20)
+	gz := gzipBytes(t, data, 9)
+	raw := flateBytes(t, data, 9)
+	for _, rs := range []int{1, 100, 8000, 40000} {
+		want := max(rs, minFill) + fastOutMargin
+		z, err := NewReader(bytes.NewReader(gz))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := io.ReadFull(z, make([]byte, rs)); err != nil {
+			t.Fatal(err)
+		}
+		if int(z.size) > want {
+			t.Errorf("Reader, %d-byte read: decoded %d bytes", rs, z.size)
+		}
+		zr := NewInflateReader(bytes.NewReader(raw))
+		if _, err := io.ReadFull(zr, make([]byte, rs)); err != nil {
+			t.Fatal(err)
+		}
+		if len(zr.z.d.out) > want {
+			t.Errorf("InflateReader, %d-byte read: decoded %d bytes", rs, len(zr.z.d.out))
+		}
+	}
+}
+
+func FuzzInflateReader(f *testing.F) {
+	r := rand.New(rand.NewPCG(41, 42))
+	for _, lv := range []int{flate.NoCompression, 1, 6, 9, flate.HuffmanOnly} {
+		f.Add(flateBytes(f, sampleData(r, 9000), lv))
+	}
+	f.Add(flateBytes(f, make([]byte, 100000), 9))
+	z := NewInflateReader(bytes.NewReader(nil))
+	f.Fuzz(func(t *testing.T, b []byte) {
+		want, werr := io.ReadAll(flate.NewReader(bytes.NewReader(b)))
+		for _, rs := range []int{1, 777, 8000} {
+			z.Reset(bytes.NewReader(b))
+			got, err := readWith(z, rs)
+			if err == nil && werr == nil && !bytes.Equal(got, want) {
+				t.Fatalf("%d-byte reads: output differs from compress/flate", rs)
+			}
+			if err == nil && werr != nil {
+				t.Fatalf("%d-byte reads: accepted input compress/flate rejects: %v", rs, werr)
+			}
+		}
+		if werr != nil {
+			return
+		}
+		// as in FuzzInflate, Inflate may reject a stream that compress/flate
+		// accepts
+		out, _, err := InflateLimit(nil, b, len(want))
+		if err == nil && !bytes.Equal(out, want) {
+			t.Fatal("limit of the output size: output differs")
+		}
+		if err == ErrTooLarge {
+			t.Fatal("limit of the output size: ErrTooLarge")
+		}
+		if len(want) > 0 {
+			out, _, err = InflateLimit(nil, b, len(want)-1)
+			if err == nil {
+				t.Fatal("limit one byte short: no error")
+			}
+			if err == ErrTooLarge && !bytes.Equal(out, want[:len(want)-1]) {
+				t.Fatal("limit one byte short: output differs")
+			}
+		}
+	})
+}

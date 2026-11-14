@@ -50,7 +50,7 @@ func (d *decoder) fast(lt, dt []uint32, lmask, dmask uint64) (done bool, err err
 	last := len(d.in) - fastInMargin
 	outp := unsafe.Pointer(unsafe.SliceData(d.out))
 	o := len(d.out)
-	end := cap(d.out) - fastOutMargin
+	end := min(cap(d.out)-fastOutMargin, d.lim-1)
 	base := d.base
 	ltp := unsafe.Pointer(unsafe.SliceData(lt))
 	dtp := unsafe.Pointer(unsafe.SliceData(dt))

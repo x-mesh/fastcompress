@@ -71,7 +71,7 @@ func (d *decoder) fastAsm(lt, dt []uint32, lmask, dmask uint64) (done bool, err 
 		last:    len(d.in) - fastInMargin,
 		out:     unsafe.Pointer(unsafe.SliceData(d.out)),
 		o:       o,
-		end:     min(cap(d.out)-fastOutMargin, o+fastChunk),
+		end:     min(cap(d.out)-fastOutMargin, o+fastChunk, d.lim-1),
 		base:    d.base,
 		lt:      unsafe.Pointer(unsafe.SliceData(lt)),
 		dt:      unsafe.Pointer(unsafe.SliceData(dt)),

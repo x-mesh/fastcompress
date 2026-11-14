@@ -60,6 +60,8 @@ _, err = io.Copy(dst, z)
 
 다 쓴 reader는 `Close`를 호출해 주세요. `Close`는 1.3 MB 버퍼를 풀에 돌려주고, 다음 `NewReader`가 이 버퍼를 다시 씁니다. `Reset`은 같은 reader로 새 스트림을 시작합니다.
 
+`Read`는 요청한 양과 비슷한 만큼만 해제하되, 적어도 4 KB를 해제합니다. 그다음부터는 해제하는 양을 두 배씩 늘려 최대 1 MB까지 해제합니다. 그래서 여러 스트림의 앞부분만 읽는 프로그램은 각 스트림을 끝까지 해제하지 않습니다.
+
 데이터가 이미 메모리에 있으면 `Gunzip`을 쓰세요.
 
 ```go
@@ -68,7 +70,17 @@ text, err := gzip.Gunzip(compressed)
 
 `Inflate(dst, src)`는 raw DEFLATE 스트림 하나를 해제합니다. 결과를 `dst` 뒤에 붙이고, 사용한 입력 바이트 수를 반환합니다.
 
-오류는 `ErrHeader`, `ErrChecksum`, `ErrCorrupt`입니다. 입력이 잘려 있으면 `io.ErrUnexpectedEOF`를 반환합니다. `Reader`는 이 오류를 반환하기 전에 해제한 바이트를 모두 돌려줍니다.
+`InflateLimit(dst, src, limit)`은 출력 크기에 한도를 둔 `Inflate`입니다. 출력이 `limit` 바이트를 넘으면 해제를 멈추고, 처음 `limit` 바이트와 `ErrTooLarge`를 반환합니다. 출처를 통제할 수 없는 데이터에 쓰세요. 예를 들어 `compress/flate`는 0으로 채운 64 MB를 65 KB로 압축합니다.
+
+`InflateReader`는 zip 파일의 항목처럼 `io.Reader`로 들어오는 raw DEFLATE 스트림을 읽습니다. `NewInflateReader`, `Read`, `Reset`, `Close`는 `Reader`의 메서드와 같이 동작합니다. `InflateReader`는 스트림 끝을 넘어 입력을 더 읽을 수 있으므로, 스트림 끝에서 멈추는 reader를 넘겨 주세요. `archive/zip`이 해제기에 넘기는 reader는 항목 끝에서 멈춥니다. `zip.Reader` `zr`의 항목을 `InflateReader`로 해제하려면 다음처럼 등록하세요.
+
+```go
+zr.RegisterDecompressor(zip.Deflate, func(r io.Reader) io.ReadCloser {
+	return gzip.NewInflateReader(r)
+})
+```
+
+오류는 `ErrHeader`, `ErrChecksum`, `ErrCorrupt`이고, `InflateLimit`은 `ErrTooLarge`도 반환합니다. 입력이 잘려 있으면 `io.ErrUnexpectedEOF`를 반환합니다. `Reader`는 이 오류를 반환하기 전에 해제한 바이트를 모두 돌려줍니다.
 
 ## 압축
 
@@ -193,6 +205,13 @@ CPU가 둘 이상이면 zstd 코드는 1 MB 이상의 데이터에 두 번째 go
 | 소스, 레벨 6 | 61 MB | 304 | 227 | 99.4 | 72.8 |
 
 비교하면 libdeflate 1.19는 C 호출 한 번으로 레벨 1 로그를 96.0 ms에 해제합니다. `Gunzip`은 107.5 ms, 어셈블리 없이는 156.8 ms가 걸립니다.
+
+스트림마다 앞부분만 읽는 검사도 있습니다. 다음 표는 raw DEFLATE 스트림 65,536개의 처음 8,000바이트를 reader 하나와 `Reset`으로 읽은 시간입니다. 각 스트림은 0으로 채운 1 MB를 `compress/flate` 레벨 9로 압축한 1,034바이트입니다. `Reader`는 같은 스트림에 gzip 헤더와 트레일러를 붙여 읽습니다. 각 해제기는 goroutine 하나를 씁니다. 표는 M1에서 5회, Xeon에서 7회 실행한 시간의 중앙값을 초로 보여 줍니다.
+
+| 측정 환경 | compress/flate | `Reader` | `InflateReader` |
+|---|---|---|---|
+| Apple M1 Pro | 0.42 | 0.16 | 0.13 |
+| Intel Xeon Silver 4112 | 0.81 | 0.27 | 0.18 |
 
 가지고 있는 파일로 측정하려면 벤치마크 도구를 실행하세요. 이 도구는 모든 해제기의 출력이 같은지도 확인합니다.
 

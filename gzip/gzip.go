@@ -94,7 +94,7 @@ func inflateConcurrentCRC(dst, src []byte) ([]byte, int, uint32, error) {
 		}
 		sum <- c
 	}()
-	out, n, err := inflate(dst, src, blocks)
+	out, n, err := inflate(dst, src, blocks, noLimit)
 	close(blocks)
 	return out, n, <-sum, err
 }
@@ -144,6 +144,11 @@ const (
 	window      = 32 << 10
 	streamChunk = 1 << 20
 	streamInput = 256 << 10
+	// minFill is the least output a fill decodes. With a floor of 1 byte,
+	// io.ReadAll, which starts with 512-byte reads, took 3% longer on 20 KB
+	// streams; with 32 KB, a read of the first 8,000 bytes of 20 KB took
+	// twice as long.
+	minFill = 4 << 10
 )
 
 // Reader decompresses a gzip stream, like compress/gzip.Reader, including
@@ -157,6 +162,11 @@ type Reader struct {
 	crc  uint32
 	size uint32
 	err  error
+	// next is the least output the next fill decodes. It doubles with each
+	// fill, so a read of a few KB decodes a few KB and a long read reaches
+	// streamChunk after a few fills.
+	next int
+	raw  bool // a DEFLATE stream with no gzip header or trailer
 }
 
 // NewReader reads the first gzip header from src. It returns io.EOF when src
@@ -181,6 +191,11 @@ var bufferPool sync.Pool
 // Reset discards the state of z and reads the first gzip header from src, as
 // NewReader does, keeping z's buffers.
 func (z *Reader) Reset(src io.Reader) error {
+	z.reset(src)
+	return z.member()
+}
+
+func (z *Reader) reset(src io.Reader) {
 	in, out := z.d.inbuf, z.d.out
 	if in == nil {
 		if b, ok := bufferPool.Get().(*buffers); ok {
@@ -197,7 +212,6 @@ func (z *Reader) Reset(src io.Reader) error {
 	z.d.stream = true
 	z.d.inbuf = in
 	z.d.out = out[:0]
-	return z.member()
 }
 
 func (z *Reader) Read(p []byte) (int, error) {
@@ -205,7 +219,7 @@ func (z *Reader) Read(p []byte) (int, error) {
 		if z.err != nil {
 			return 0, z.err
 		}
-		z.fill()
+		z.fill(len(p))
 	}
 	n := copy(p, z.d.out[z.r:])
 	z.r += n
@@ -223,27 +237,38 @@ func (z *Reader) Close() error {
 	return nil
 }
 
-// fill decodes the next chunk once every decoded byte has been read.
-func (z *Reader) fill() {
+// fill decodes about n more bytes once every decoded byte has been read: want,
+// but at least minFill and next, and at most streamChunk. A scan that reads
+// the start of each stream then decodes about as much as it reads.
+func (z *Reader) fill(want int) {
 	d := &z.d
-	if len(d.out) > window {
-		// keep the last 32 KB as match history
+	n := min(max(want, z.next, minFill), streamChunk)
+	z.next = min(2*n, streamChunk)
+	if cap(d.out)-len(d.out) < n+fastOutMargin {
+		// keep only the last 32 KB as match history
 		shift := len(d.out) - window
 		copy(d.out, d.out[shift:])
 		d.out = d.out[:window]
 		z.r -= shift
 		d.base = max(d.base-shift, 0)
 	}
+	d.lim = len(d.out) + n
 	start := len(d.out)
 	err := d.step()
-	// checksum while the new bytes are still in cache
-	z.crc = crcUpdate(z.crc, d.out[start:])
-	z.size += uint32(len(d.out) - start)
+	if !z.raw {
+		// checksum while the new bytes are still in cache
+		z.crc = crcUpdate(z.crc, d.out[start:])
+		z.size += uint32(len(d.out) - start)
+	}
 	if err != nil {
 		z.err = err
 		return
 	}
 	if d.state != blockDone {
+		return
+	}
+	if z.raw {
+		z.err = io.EOF
 		return
 	}
 	var t [8]byte
@@ -350,3 +375,32 @@ func (z *Reader) member() error {
 	z.crc, z.size = 0, 0
 	return nil
 }
+
+// InflateReader decompresses a raw DEFLATE stream (RFC 1951), such as a zip
+// entry, like the reader of compress/flate. It can read src past the end of
+// the stream, so give it a reader that ends there, such as an
+// io.SectionReader.
+type InflateReader struct {
+	z Reader
+}
+
+// NewInflateReader returns a reader that decodes src.
+func NewInflateReader(src io.Reader) *InflateReader {
+	r := &InflateReader{}
+	r.Reset(src)
+	return r
+}
+
+// Reset discards the state of r and starts to decode src, keeping r's
+// buffers.
+func (r *InflateReader) Reset(src io.Reader) {
+	r.z.reset(src)
+	r.z.raw = true
+	r.z.d.state = blockHeader
+}
+
+func (r *InflateReader) Read(p []byte) (int, error) { return r.z.Read(p) }
+
+// Close returns r's buffers for reuse, as Reader.Close does. Reset makes r
+// usable again.
+func (r *InflateReader) Close() error { return r.z.Close() }

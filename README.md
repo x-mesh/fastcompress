@@ -60,6 +60,8 @@ _, err = io.Copy(dst, z)
 
 Call `Close` when you do not need the reader. `Close` gives the 1.3 MB of buffers back to a pool, and the next `NewReader` uses them again. `Reset` starts a new stream on the same reader.
 
+A `Read` decodes approximately the quantity of data that it asks for, but not less than 4 KB. Each subsequent step decodes two times more data, to a maximum of 1 MB. Thus, a program that reads only the start of many streams does not decode all of each stream.
+
 If the data is already in memory, use `Gunzip`:
 
 ```go
@@ -68,7 +70,17 @@ text, err := gzip.Gunzip(compressed)
 
 `Inflate(dst, src)` decodes one raw DEFLATE stream. It appends the result to `dst` and returns the number of input bytes it used.
 
-The errors are `ErrHeader`, `ErrChecksum` and `ErrCorrupt`. Truncated input gives `io.ErrUnexpectedEOF`. Before `Reader` returns that error, it returns all the bytes that it decoded.
+`InflateLimit(dst, src, limit)` is `Inflate` with a limit on the output. If the output is more than `limit` bytes, it stops and returns the first `limit` bytes with `ErrTooLarge`. Use it for data from a source that you do not control. For example, `compress/flate` compresses 64 MB of zeros to 65 KB.
+
+`InflateReader` reads a raw DEFLATE stream from an `io.Reader`, for example an entry of a zip file. `NewInflateReader`, `Read`, `Reset` and `Close` work like the methods of `Reader`. `InflateReader` can read more input than the stream. Thus, give it a reader that stops at the end of the stream. The readers that `archive/zip` gives to a decompressor stop there. To decode the entries of a `zip.Reader` `zr` with `InflateReader`, register it:
+
+```go
+zr.RegisterDecompressor(zip.Deflate, func(r io.Reader) io.ReadCloser {
+	return gzip.NewInflateReader(r)
+})
+```
+
+The errors are `ErrHeader`, `ErrChecksum`, `ErrCorrupt` and, from `InflateLimit`, `ErrTooLarge`. Truncated input gives `io.ErrUnexpectedEOF`. Before `Reader` returns that error, it returns all the bytes that it decoded.
 
 ## Compress
 
@@ -194,6 +206,13 @@ The next table is for amd64. The machine is an Intel Xeon Silver 4112 (4 cores, 
 | Source, level 6 | 61 MB | 304 | 227 | 99.4 | 72.8 |
 
 For comparison, libdeflate 1.19 decodes the log at level 1 in 96.0 ms with one C call. `Gunzip` decodes it in 107.5 ms, and in 156.8 ms without the assembly.
+
+A scan can read only the start of each stream. The next table shows the time to read the first 8,000 bytes of 65,536 raw DEFLATE streams with one reader and `Reset`. Each stream is 1 MB of zeros, which `compress/flate` compressed at level 9 to 1,034 bytes. `Reader` reads the same streams with a gzip header and trailer. Each decoder uses one goroutine. The table shows the median time in seconds, of 5 runs on the M1 and 7 runs on the Xeon.
+
+| Machine | compress/flate | `Reader` | `InflateReader` |
+|---|---|---|---|
+| Apple M1 Pro | 0.42 | 0.16 | 0.13 |
+| Intel Xeon Silver 4112 | 0.81 | 0.27 | 0.18 |
 
 To measure your own files, run the benchmark tool. It also makes sure that all the decoders give the same output.
 
