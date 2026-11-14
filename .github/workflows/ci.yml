@@ -24,6 +24,7 @@ jobs:
       - run: go test -gcflags=all=-d=checkptr ./...
       - run: go test -run '^$' -fuzz '^FuzzInflate$' -fuzztime 20s -fuzzminimizetime 1s ./gzip
       - run: go test -run '^$' -fuzz '^FuzzReader$' -fuzztime 20s -fuzzminimizetime 1s ./gzip
+      - run: go test -run '^$' -fuzz '^FuzzInflateReader$' -fuzztime 20s -fuzzminimizetime 1s ./gzip
       - if: runner.arch == 'X64'
         run: go test -run '^$' -fuzz '^FuzzFastAsm$' -fuzztime 20s -fuzzminimizetime 1s ./gzip
       - run: go test -run '^$' -fuzz '^FuzzBuildTable$' -fuzztime 20s -fuzzminimizetime 1s ./gzip

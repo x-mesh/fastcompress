@@ -4,7 +4,11 @@
 // Reader replaces compress/gzip.Reader for reading: NewReader, Read, Reset and
 // Close behave the same, and concatenated members are read as one stream.
 // Reader does not expose the gzip header fields (Name, Comment, ModTime).
-// Gunzip and Inflate decode data that is already in memory.
+// A Read decodes about as much as it asks for, so a scan that reads the start
+// of many streams does not decode each one to the end. InflateReader reads a
+// raw DEFLATE stream, such as a zip entry, in the same way.
+// Gunzip and Inflate decode data that is already in memory; InflateLimit
+// stops at a limit on the output size, for data from an unknown source.
 //
 // Writer replaces compress/gzip.Writer for writing, with the same levels and
 // the methods NewWriter, NewWriterLevel, Write, Flush, Close and Reset.
